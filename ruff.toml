@@ -1,0 +1,18 @@
+# ruff lint config. An explicit `select` (not `extend-select`) so the gate does not change when
+# ruff's defaults do: F (pyflakes — undefined names, unused imports), B (bugbear — real bug
+# patterns), ARG (unused arguments), C901 (McCabe complexity — keeps one function from growing
+# four jobs). No E (pycodestyle): its findings here are all style — `a; b` one-liners and long
+# lines the harness uses on purpose. Kept minimal; add a rule only when it earns its keep. No
+# autofix rules that rewrite loops into comprehensions: plain, verbose code is the house style.
+target-version = "py311"
+line-length = 110
+
+[lint]
+select = ["F", "B", "ARG", "C901"]
+
+[lint.mccabe]
+max-complexity = 10
+
+[lint.per-file-ignores]
+# Display code for the static board page; the scoring modules are what the gate protects.
+"glam_bench/site_nls.py" = ["C901"]

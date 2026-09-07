@@ -1,0 +1,10 @@
+results/*
+!results/nls/
+results/nls/*
+!results/nls/*.json
+results/nls/*.limit*.json
+results/nls/*.partial
+__pycache__/
+*.pyc
+.venv/
+.DS_Store

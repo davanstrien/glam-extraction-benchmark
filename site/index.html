@@ -1,0 +1,416 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GLAM document extraction — National Library of Scotland index cards</title>
+<style>/* Base stylesheet for the generated board page. Document first: no card chrome, no pills,
+   colour only where it carries meaning. */
+:root{--ink:#1a1a1a;--muted:#6b7280;--line:#e5e7eb;}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);
+  font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;}
+.wrap{max-width:900px;margin:0 auto;padding:44px 28px 64px;}
+h1{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em;}
+.sub{font-size:13px;color:var(--muted);margin:0 0 24px;max-width:76ch;line-height:1.6;}
+table{width:100%;border-collapse:collapse;font-size:14px;}
+th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--muted);padding:0 14px 8px 0;border-bottom:1px solid var(--ink);}
+th.r,td.r{text-align:right;}
+td{padding:10px 14px 10px 0;border-bottom:1px solid var(--line);}
+th:last-child,td:last-child{padding-right:0;}
+tbody tr:last-child td{border-bottom:none;}
+.model{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;}
+.sz{color:var(--muted);font-size:12px;margin-left:8px;font-family:system-ui,sans-serif;}
+.foot{margin:26px 0 0;font-size:12.5px;color:var(--muted);line-height:1.65;max-width:76ch;}
+.mono{font-family:ui-monospace,Menlo,monospace;}
+a{color:inherit;text-decoration:underline;text-underline-offset:2px;
+  text-decoration-color:var(--line);}
+a:hover{text-decoration-color:currentColor;}
+
+  td.r{font-variant-numeric:tabular-nums;}
+  td.score{font-weight:600;}
+  td.na{color:var(--muted);cursor:help;}
+  .flag,.tier{color:var(--muted);cursor:help;}
+  .flag{font-size:11.5px;margin-left:8px;font-family:system-ui,sans-serif;}
+  tr.grp th{border-bottom:none;padding-bottom:3px;text-transform:none;letter-spacing:0;
+    font-weight:400;}
+  tr.base td{color:var(--muted);}
+  .tldr{font-size:15px;line-height:1.65;margin:0 0 10px;max-width:74ch;}
+  .src{font-size:13.5px;line-height:1.65;margin:0 0 18px;max-width:74ch;}
+  .intro{font-size:14px;line-height:1.7;margin:0 0 24px;max-width:74ch;}
+  .intro p{margin:0 0 12px;} .intro p:last-child{margin-bottom:0;}
+  .scat{display:block;width:100%;height:auto;margin:30px 0 0;}
+  .scat .ax{stroke:#d7dbe0;stroke-width:1;}
+  .scat .med{stroke:#eceef2;stroke-width:1;stroke-dasharray:3 4;}
+  .scat .lead{stroke:#d7dbe0;stroke-width:1;}
+  .scat .dot{fill:var(--ink);} .scat .dot.hollow{fill:#fff;stroke:var(--ink);stroke-width:1.4;}
+  .scat .dot.base{fill:#b9bec6;}
+  .scat text{font-family:system-ui,-apple-system,sans-serif;fill:var(--muted);}
+  .scat .pl{font-size:11.5px;fill:var(--ink);paint-order:stroke;stroke:#fff;
+    stroke-width:3px;stroke-linejoin:round;} .scat .pl.base{fill:#a2a8b1;}
+  .scat circle,.scat path{cursor:help;}
+  .scat .tick{font-size:10.5px;} .scat .axl{font-size:11px;}
+  .scat .quad{font-size:10.5px;fill:#b9bec6;}
+  .scat .best{fill:#f4f6f4;}
+  .cap{font-size:12px;color:var(--muted);margin:10px 0 0;max-width:78ch;line-height:1.6;}
+  details{margin:30px 0 0;}
+  summary{font-size:13px;color:var(--muted);cursor:pointer;padding:4px 0;}
+  details table{margin-top:14px;font-size:13px;}
+  details.brk th:first-child{width:230px;}
+  .worked .wlead{font-size:14px;line-height:1.7;margin:14px 0 16px;max-width:78ch;}
+  .wgrid figure{margin:0 0 18px;max-width:660px;}
+  .wgrid img{width:100%;border:1px solid var(--line);display:block;}
+  .wgrid figcaption{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;}
+  table.wt{font-size:12.5px;} table.wt td{vertical-align:top;}
+  table.wt .fp{font-family:ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;}
+  table.wt tr.exc td{color:var(--muted);}
+  .nil,.t-none{color:#c3c8d0;}
+  .t-ok{color:#1f7a4d;} .t-part{color:var(--muted);}
+  .t-work,.wnote b.w{color:#3a5a78;font-weight:600;}
+  .t-risk,.wnote b.r{color:#9a3b2f;font-weight:600;}
+  .wnote{font-size:12.5px;line-height:1.7;margin:16px 0 0;max-width:82ch;}
+  .scat .bestl{font-size:10.5px;fill:#9aa39a;}
+  .sortr{font-size:13px;color:var(--muted);margin:0 0 16px;}
+  .sortr button{font:inherit;background:none;border:none;padding:0 0 1px;margin-left:12px;
+    color:var(--muted);cursor:pointer;border-bottom:1px solid transparent;}
+  .sortr button.on{color:var(--ink);border-bottom-color:var(--ink);}
+  th.score{width:96px;} th.risk,th.work{width:118px;}
+</style></head><body><div class="wrap">
+  <h1>GLAM document extraction — National Library of Scotland index cards</h1>
+  <p class="tldr">Each model must return a completed record from a card image and JSON schema.</p>
+  <p class="sub">98 index cards · 12 models</p>
+  <p class="src">Cards from the <a href="https://www.nls.uk/">National Library of Scotland</a>'s
+  manuscript catalogue, <a class="mono" href="https://huggingface.co/datasets/NationalLibraryOfScotland/index-cards-eval">NationalLibraryOfScotland/index-cards-eval</a>
+  (CC0). Labels drafted by Qwen3.6-35B-A3B, checked by NLS cataloguers: 66 accepted as
+  drafted, 32 corrected.</p>
+  <div class="intro">
+  <p><b>Risk</b> is a wrong identifier or an invented field: silent, because nothing in the record
+  flags it. <b>Workload</b> is a visible blank field someone must fill.
+  <b>Fields right</b> is overall F1; resampling the 98
+  cards moves a score by up to ±3 points, so neighbouring rows are not separated
+  here.</p>
+  </div>
+  <div class="sortr">Sort by<button class="on" data-k="risk">identifiers wrong</button><button
+    data-k="f1">overall score</button></div>
+  <table><thead>
+    <tr class="grp"><th></th><th class="r risk" colspan="2">Risk · silent errors</th>
+      <th class="r work">Workload · visible gaps</th><th></th></tr>
+    <tr><th>Model</th><th class="r risk" title="Manuscript numbers and folio references, scored with no half marks. Wrong identifiers look valid in the catalogue. Out of identifiers present on the card that the model filled in.">Identifiers wrong</th><th class="r risk" title="Fields filled in where the card is blank: the hardest errors to catch on review, with nothing on the card to check against.">Invented fields</th><th class="r work" title="Fields with values on the card but returned empty: visible work for a reviewer.">Fields left blank</th><th class="r score" title="Overall content-F1 across every field, including part marks. It combines risk and workload.">Fields right</th></tr>
+  </thead><tbody id="tb">
+<tr data-risk="0.061224"
+    data-f1="-0.889102">
+  <td class="model">Qwen/Qwen3-VL-235B-A22B-Instruct
+    <span class="sz">235B (22B act)</span></td>
+  <td class="r risk">6.1%</td>
+  <td class="r risk">22.8%</td>
+  <td class="r work">1.6%</td>
+  <td class="r score">88.9</td>
+</tr>
+<tr data-risk="0.07265"
+    data-f1="-0.854583">
+  <td class="model">Qwen/Qwen3.8-27B
+    <span class="sz">27.8B</span></td>
+  <td class="r risk">7.3%</td>
+  <td class="r risk">4.0%</td>
+  <td class="r work">8.7%</td>
+  <td class="r score">85.5</td>
+</tr>
+<tr data-risk="0.078838"
+    data-f1="-0.893663">
+  <td class="model">Qwen/Qwen3.6-27B
+    <span class="sz">27B</span></td>
+  <td class="r risk">7.9%</td>
+  <td class="r risk">5.8%</td>
+  <td class="r work">3.9%</td>
+  <td class="r score">89.4</td>
+</tr>
+<tr data-risk="0.089362"
+    data-f1="-0.841103">
+  <td class="model">Qwen/Qwen3.5-9B
+    <span class="sz">9B</span></td>
+  <td class="r risk">8.9%</td>
+  <td class="r risk">21.3%</td>
+  <td class="r work">2.4%</td>
+  <td class="r score">84.1</td>
+</tr>
+<tr data-risk="0.1"
+    data-f1="-0.793391">
+  <td class="model">google/gemma-4-26B-A4B-it
+    <span class="sz">26B (4B act)</span></td>
+  <td class="r risk">10.0%</td>
+  <td class="r risk">18.8%</td>
+  <td class="r work">15.2%</td>
+  <td class="r score">79.3</td>
+</tr>
+<tr data-risk="0.108225"
+    data-f1="-0.853735">
+  <td class="model">numind/NuExtract3
+    <span class="sz">4B</span></td>
+  <td class="r risk">10.8%</td>
+  <td class="r risk">17.7%</td>
+  <td class="r work">4.3%</td>
+  <td class="r score">85.4</td>
+</tr>
+<tr data-risk="0.108787"
+    data-f1="-0.861568">
+  <td class="model">datalab-to/lift
+    <span class="sz">9B</span></td>
+  <td class="r risk">10.9%</td>
+  <td class="r risk">25.0%</td>
+  <td class="r work">3.0%</td>
+  <td class="r score">86.2</td>
+</tr>
+<tr data-risk="0.152263"
+    data-f1="-0.853944">
+  <td class="model">google/gemma-4-31B-it
+    <span class="sz">31B</span></td>
+  <td class="r risk">15.2%</td>
+  <td class="r risk">22.0%</td>
+  <td class="r work">4.1%</td>
+  <td class="r score">85.4</td>
+</tr>
+<tr data-risk="0.179245"
+    data-f1="-0.834717">
+  <td class="model">meta-llama/Llama-4-Scout-17B-16E-Instruct
+    <span class="sz">109B (17B act)</span></td>
+  <td class="r risk">17.9%</td>
+  <td class="r risk">14.6%</td>
+  <td class="r work">8.8%</td>
+  <td class="r score">83.5</td>
+</tr>
+<tr data-risk="0.70922"
+    data-f1="-0.614045">
+  <td class="model">google/gemma-3-4b-it
+    <span class="sz">4B</span><span class="flag" title="On 1 of the 98 cards the output was not usable JSON and scored zero.">99% parsed</span></td>
+  <td class="r risk">70.9%</td>
+  <td class="r risk">15.0%</td>
+  <td class="r work">27.1%</td>
+  <td class="r score">61.4</td>
+</tr>
+<tr data-risk="0.882353"
+    data-f1="-0.634572">
+  <td class="model">swiss-ai/Apertus-v1.5-8B
+    <span class="sz">8.9B</span><span class="flag" title="On 2 of the 98 cards the output was not usable JSON and scored zero.">98% parsed</span></td>
+  <td class="r risk">88.2%</td>
+  <td class="r risk">0.5%</td>
+  <td class="r work">40.0%</td>
+  <td class="r score">63.5</td>
+</tr>
+<tr data-risk="9"
+    data-f1="-0.306443">
+  <td class="model">LiquidAI/LFM2.5-VL-1.6B-Extract
+    <span class="sz">1.6B</span><span class="flag" title="On 12 of the 98 cards the output was not usable JSON and scored zero. 2 of the 98 outputs hit the token limit. On this collection the model tends to return the schema: field names and type keywords such as &quot;exact&quot; instead of values. Even parsed rows contain no manuscript numbers.">88% parsed</span></td>
+  <td class="r risk na" title="This model returned no manuscript number or folio reference on any of the 98 cards, leaving no identifiers to get wrong. Read its workload figure instead.">n/a</td>
+  <td class="r risk">67.1%</td>
+  <td class="r work">53.6%</td>
+  <td class="r score">30.6</td>
+</tr>
+<tr class="base" data-risk="99" data-f1="99">
+  <td class="model">constants baseline
+    <span class="sz" title="A model that reads nothing. It gives every card the same record: the most common value
+for each field across the 98 gold records, counting absence as a value. Its score is the
+floor: what the collection alone supplies without reading.">reads nothing</span></td>
+  <td class="r risk">97.8%</td><td class="r risk">7.3%</td><td class="r work">29.3%</td><td class="r score">59.3</td>
+</tr>
+  </tbody></table>
+<svg class="scat" viewBox="0 0 900 520" role="img" aria-label="Fields left blank against identifiers wrong, 12 models and the constants baseline">
+<rect class="best" x="62" y="230.7" width="88.1" height="241.3"/>
+<text class="bestl" x="69" y="464">better</text>
+<line class="ax" x1="62" y1="472" x2="874" y2="472"/><line class="ax" x1="62" y1="26" x2="62" y2="472"/>
+<line class="med" x1="150.1" y1="26" x2="150.1" y2="472"/><line class="med" x1="62" y1="230.7" x2="874" y2="230.7"/><text class="quad" x="155.1" y="466.0">median</text><text class="quad" x="874" y="225.7" text-anchor="end">median</text>
+<text class="tick" x="62.0" y="489" text-anchor="middle">0%</text>
+<text class="tick" x="468.0" y="489" text-anchor="middle">30%</text>
+<text class="tick" x="874.0" y="489" text-anchor="middle">60%</text>
+<text class="tick" x="53" y="476.0" text-anchor="end">0%</text>
+<text class="tick" x="53" y="253.0" text-anchor="end">10%</text>
+<text class="tick" x="53" y="30.0" text-anchor="end">20%</text>
+<text class="axl" x="468" y="511" text-anchor="middle">fields left blank &nbsp;→&nbsp; more for the reviewer to finish</text>
+<text class="axl" transform="translate(17,249) rotate(-90)" text-anchor="middle">identifiers wrong &nbsp;→&nbsp; more silent errors</text>
+<circle class="dot" cx="83.2" cy="335.5" r="4"><title>Qwen3-VL-235B — 1.6% fields left blank, 6.1% identifiers wrong</title></circle>
+<circle class="dot" cx="179.5" cy="310.0" r="4"><title>Qwen3.8-27B — 8.7% fields left blank, 7.3% identifiers wrong</title></circle>
+<circle class="dot" cx="114.5" cy="296.2" r="4"><title>Qwen3.6-27B — 3.9% fields left blank, 7.9% identifiers wrong</title></circle>
+<circle class="dot" cx="94.5" cy="272.7" r="4"><title>Qwen3.5-9B — 2.4% fields left blank, 8.9% identifiers wrong</title></circle>
+<circle class="dot" cx="268.2" cy="249.0" r="4"><title>gemma-4-26B-A4B — 15.2% fields left blank, 10.0% identifiers wrong</title></circle>
+<circle class="dot" cx="120.7" cy="230.7" r="4"><title>NuExtract-3 — 4.3% fields left blank, 10.8% identifiers wrong</title></circle>
+<circle class="dot" cx="103.2" cy="229.4" r="4"><title>lift-9B — 3.0% fields left blank, 10.9% identifiers wrong</title></circle>
+<circle class="dot" cx="117.0" cy="132.5" r="4"><title>gemma-4-31B — 4.1% fields left blank, 15.2% identifiers wrong</title></circle>
+<circle class="dot" cx="180.7" cy="72.3" r="4"><title>Llama-4-Scout — 8.8% fields left blank, 17.9% identifiers wrong</title></circle>
+<path class="dot" d="M423.5 30 L428.1 21.6 L432.7 30 Z"><title>gemma-3-4b · 71% ↑ — 27.1% fields left blank, 70.9% identifiers wrong</title></path>
+<path class="dot" d="M598.5 70 L603.1 61.6 L607.7 70 Z"><title>Apertus-v1.5-8B · 88% ↑ — 40.0% fields left blank, 88.2% identifiers wrong</title></path>
+<circle class="dot hollow" cx="786.8" cy="472.0" r="4"><title>LFM2.5-VL-1.6B-Extract — 53.6% fields left blank, no identifiers written</title></circle>
+<path class="dot base" d="M453.5 50 L458.1 41.6 L462.7 50 Z"><title>constants baseline · 98% ↑ — 29.3% fields left blank, 97.8% identifiers wrong</title></path>
+<text class="pl" x="93.2" y="339.5" text-anchor="start">Qwen3-VL-235B</text>
+<text class="pl" x="189.5" y="315.2" text-anchor="start">Qwen3.8-27B</text>
+<text class="pl" x="124.5" y="300.2" text-anchor="start">Qwen3.6-27B</text>
+<text class="pl" x="104.5" y="278.4" text-anchor="start">Qwen3.5-9B</text>
+<line class="lead" x1="271.7" y1="249.0" x2="276.7" y2="259.4"/>
+<text class="pl" x="278.2" y="263.4" text-anchor="start">gemma-4-26B-A4B</text>
+<line class="lead" x1="124.2" y1="230.7" x2="129.2" y2="244.4"/>
+<text class="pl" x="130.7" y="248.4" text-anchor="start">NuExtract-3</text>
+<text class="pl" x="113.2" y="233.4" text-anchor="start">lift-9B</text>
+<text class="pl" x="127.0" y="136.5" text-anchor="start">gemma-4-31B</text>
+<line class="lead" x1="184.2" y1="72.3" x2="189.2" y2="81.0"/>
+<text class="pl" x="190.7" y="85.0" text-anchor="start">Llama-4-Scout</text>
+<line class="lead" x1="431.6" y1="26.0" x2="436.6" y2="32.0"/>
+<text class="pl" x="438.1" y="36.0" text-anchor="start">gemma-3-4b · 71% ↑</text>
+<text class="pl" x="613.1" y="70.0" text-anchor="start">Apertus-v1.5-8B · 88% ↑</text>
+<line class="lead" x1="783.3" y1="472.0" x2="778.3" y2="468.0"/>
+<text class="pl" x="776.8" y="472.0" text-anchor="end">LFM2.5-VL-1.6B-Extract</text>
+<text class="pl base" x="468.1" y="51.0" text-anchor="start">constants baseline · 98% ↑</text>
+</svg>
+<p class="cap">A hollow point wrote no identifiers to get wrong. Read its workload figure instead. A triangle exceeds the scale; its label gives the value. The grey point is the constants baseline: it reads nothing and gives every card the most common value for each field. Its score is the floor. Hover for exact figures.</p>
+<details class="worked"><summary>One card, field by field</summary>
+  <p class="wlead">google/gemma-4-31B-it on card
+  <span class="mono">Allan-W.-Anderson-D.__0221</span> — a label National Library of Scotland
+  cataloguers accepted unchanged. The model catalogued a second, fainter line below the main
+  entry: show-through from the card behind.</p>
+  <div class="wgrid">
+    <figure><img src="worked-card.jpg" alt="Manuscript index card reading ALLEN (George), Publisher, and UNWIN, letter of (1930), 9221, f. 102 — with fainter show-through text from the card behind visible below it">
+      <figcaption>Card detail; models received the full image.
+      NationalLibraryOfScotland/index-cards-eval · CC0</figcaption></figure>
+    <table class="wt"><thead><tr>
+      <th>field</th><th>human-checked record</th><th>model output</th><th>scored as</th>
+    </tr></thead><tbody>
+<tr><td class="fp">image_type</td><td>index_card</td><td>index_card</td><td class="t-ok">right</td></tr>
+<tr><td class="fp">heading</td><td>ALLEN (George)</td><td>Allen, G.</td><td class="t-part">part marks · 0.74</td></tr>
+<tr><td class="fp">heading_type</td><td>person</td><td>person</td><td class="t-ok">right</td></tr>
+<tr><td class="fp">epithet</td><td>Publisher, and UNWIN,</td><td><span class="nil">—</span></td><td class="t-work">left blank</td></tr>
+<tr><td class="fp">cross_reference</td><td><span class="nil">—</span></td><td><span class="nil">—</span></td><td class="t-none"></td></tr>
+<tr><td class="fp">cross_reference_text</td><td><span class="nil">—</span></td><td><span class="nil">—</span></td><td class="t-none"></td></tr>
+<tr><td class="fp">has_corrections</td><td>false</td><td>false</td><td class="t-ok">right</td></tr>
+<tr><td class="fp">continues_onto_next</td><td>false</td><td>false</td><td class="t-ok">right</td></tr>
+<tr><td class="fp">continued_from_previous</td><td>false</td><td>false</td><td class="t-ok">right</td></tr>
+<tr><td class="fp">entries[0].ms_no</td><td>9221</td><td>9221</td><td class="t-ok">right</td></tr>
+<tr><td class="fp">entries[0].folios</td><td>f. 102</td><td>102</td><td class="t-risk">wrong</td></tr>
+<tr><td class="fp">entries[0].description</td><td>letter of (1930)</td><td>ALLEN (George), Publisher, and UNWIN, letter of (1930)</td><td class="t-part">part marks · 0.46</td></tr>
+<tr><td class="fp">entries[1].ms_no</td><td><span class="nil">—</span></td><td>8561</td><td class="t-risk">invented</td></tr>
+<tr><td class="fp">entries[1].folios</td><td><span class="nil">—</span></td><td>206-9, 211, 228-30</td><td class="t-risk">invented</td></tr>
+<tr><td class="fp">entries[1].description</td><td><span class="nil">—</span></td><td>letters to (1939-41)</td><td class="t-risk">invented</td></tr>
+<tr class="exc"><td class="fp">notes</td><td>The faint text below the main entry (letters to (1939-41), 8561...) is show-through from the card behind and is ignored.</td><td><span class="nil">—</span></td><td class="t-none">not scored</td></tr>
+    </tbody></table>
+  </div>
+  <p class="wnote"><b class="w">1 left blank</b> is workload: the model omitted the card's epithet,
+  leaving a visibly empty field. <b class="r">3 invented</b> and <b class="r">1 wrong</b>
+  are risk: entry 1 copies a whole manuscript entry — number, folios, description — from the card
+  behind, without marking it as doubtful. <span class="mono">102</span> for <span class="mono">f. 102</span>
+  has the right number but the wrong form. Identifiers get no half marks, so it scores wrong.
+  <span class="mono">notes</span> is the reviewer's labelling commentary. No model can produce it,
+  so it is excluded from every number on this page.</p>
+</details>
+
+  <details class="brk"><summary>Breakdown: field types, precision, recall and verified/corrected labels</summary>
+  <table><thead><tr><th>Model</th><th class='r'>identifiers &amp; flags F1</th><th class='r'>free-text F1</th><th class='r'>precision</th><th class='r'>recall</th><th class='r'>verified (66)</th><th class='r'>corrected (32)</th><th class='r'>identifier-clean cards</th><th class='r'>parsed</th></tr></thead><tbody>
+<tr>
+  <td class="model">Qwen/Qwen3-VL-235B-A22B-Instruct</td>
+  <td class="r">92.9</td><td class="r">79.9</td>
+  <td class="r">88.3</td><td class="r">90.5</td>
+  <td class="r">90.5</td><td class="r">85.7</td>
+  <td class="r">83</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">Qwen/Qwen3.8-27B</td>
+  <td class="r">93.9</td><td class="r">63.6</td>
+  <td class="r">89.4</td><td class="r">82.1</td>
+  <td class="r">87.2</td><td class="r">81.8</td>
+  <td class="r">77</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">Qwen/Qwen3.6-27B</td>
+  <td class="r">94.9</td><td class="r">76.2</td>
+  <td class="r">90.8</td><td class="r">88.2</td>
+  <td class="r">90.7</td><td class="r">86.7</td>
+  <td class="r">78</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">Qwen/Qwen3.5-9B</td>
+  <td class="r">89.4</td><td class="r">71.9</td>
+  <td class="r">83.6</td><td class="r">85.1</td>
+  <td class="r">87.1</td><td class="r">77.8</td>
+  <td class="r">75</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">google/gemma-4-26B-A4B-it</td>
+  <td class="r">87.9</td><td class="r">57.7</td>
+  <td class="r">83.9</td><td class="r">76.7</td>
+  <td class="r">82.6</td><td class="r">72.6</td>
+  <td class="r">71</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">numind/NuExtract3</td>
+  <td class="r">91.6</td><td class="r">71.9</td>
+  <td class="r">86.0</td><td class="r">85.4</td>
+  <td class="r">86.3</td><td class="r">83.4</td>
+  <td class="r">73</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">datalab-to/lift</td>
+  <td class="r">90.7</td><td class="r">75.3</td>
+  <td class="r">85.7</td><td class="r">87.3</td>
+  <td class="r">87.4</td><td class="r">83.6</td>
+  <td class="r">73</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">google/gemma-4-31B-it</td>
+  <td class="r">90.7</td><td class="r">72.9</td>
+  <td class="r">85.6</td><td class="r">86.0</td>
+  <td class="r">87.0</td><td class="r">82.0</td>
+  <td class="r">70</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">meta-llama/Llama-4-Scout-17B-16E-Instruct</td>
+  <td class="r">88.6</td><td class="r">71.2</td>
+  <td class="r">86.5</td><td class="r">81.7</td>
+  <td class="r">85.2</td><td class="r">79.9</td>
+  <td class="r">59</td><td class="r">100%</td>
+</tr>
+<tr>
+  <td class="model">google/gemma-3-4b-it</td>
+  <td class="r">67.4</td><td class="r">46.7</td>
+  <td class="r">69.0</td><td class="r">56.3</td>
+  <td class="r">65.2</td><td class="r">53.6</td>
+  <td class="r">22</td><td class="r">99%</td>
+</tr>
+<tr>
+  <td class="model">swiss-ai/Apertus-v1.5-8B</td>
+  <td class="r">73.5</td><td class="r">35.5</td>
+  <td class="r">81.4</td><td class="r">52.5</td>
+  <td class="r">67.3</td><td class="r">55.5</td>
+  <td class="r">9</td><td class="r">98%</td>
+</tr>
+<tr>
+  <td class="model">LiquidAI/LFM2.5-VL-1.6B-Extract</td>
+  <td class="r">40.1</td><td class="r">15.3</td>
+  <td class="r">38.0</td><td class="r">26.9</td>
+  <td class="r">31.5</td><td class="r">28.8</td>
+  <td class="r">9</td><td class="r">88%</td>
+</tr>
+<tr class="base">
+  <td class="model">constants baseline</td>
+  <td class="r">68.7</td><td class="r">36.6</td>
+  <td class="r">69.3</td><td class="r">52.7</td>
+  <td class="r">62.4</td><td class="r">52.9</td>
+  <td class="r">9</td><td class="r">100%</td>
+</tr>
+  </tbody></table>
+  <p class="cap">Identifiers &amp; flags use exact matching (manuscript numbers, folios,
+  fixed categories and true/false values); free-text uses character closeness. <b>verified</b> (66 cards): labels reviewers accepted as drafted;
+  <b>corrected</b> (32): labels reviewers edited. The drafts came from Qwen3.6-35B-A3B,
+  so the subsets are reported separately. The split does not establish whether its relatives benefit.
+  <b>Identifiers wrong</b> is counted over the identifiers the card has that the model filled in;
+  one added where the card has none counts as invented, one left blank as workload. <b>Identifier-clean cards</b>: every manuscript number and folio
+  reference in the gold record was returned exactly right. Cards with no identifiers count as
+  clean for every model. <b>Parsed</b>: share of the 98 outputs usable as
+  JSON; the rest scored zero.</p></details>
+
+  <p class="foot">Gold set: <a class="mono"
+  href="https://huggingface.co/datasets/NationalLibraryOfScotland/index-cards-eval">NationalLibraryOfScotland/index-cards-eval</a> (CC0) — index cards from the
+  National Library of Scotland's manuscript catalogue; labels drafted by Qwen3.6-35B-A3B and checked
+  by NLS cataloguers (66 accepted as drafted, 32 corrected). Every model received the same card image and JSON Schema; the same scorer evaluated all outputs. The three main-table rate columns are micro-averaged over all 98 cards. Fields right
+  and the breakdown are per-card means, except identifier-clean cards, which is a count;
+  verified/corrected F1 uses the corresponding subset. Code and result files: <a href="https://github.com/davanstrien/glam-extraction-benchmark">github.com/davanstrien/glam-extraction-benchmark</a></p>
+</div>
+<script>
+const tb=document.getElementById('tb'),bs=document.querySelectorAll('.sortr button');
+bs.forEach(b=>b.onclick=()=>{bs.forEach(x=>x.classList.remove('on'));b.classList.add('on');
+const k=b.dataset.k;[...tb.rows].sort((a,z)=>a.dataset[k]-z.dataset[k]).forEach(r=>tb.append(r));
+tb.append(tb.querySelector('tr.base'));});
+</script>
+</body></html>

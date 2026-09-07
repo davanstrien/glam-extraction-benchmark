@@ -1,0 +1,23 @@
+/* Base stylesheet for the generated board page. Document first: no card chrome, no pills,
+   colour only where it carries meaning. */
+:root{--ink:#1a1a1a;--muted:#6b7280;--line:#e5e7eb;}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);
+  font-family:system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.5;}
+.wrap{max-width:900px;margin:0 auto;padding:44px 28px 64px;}
+h1{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:-.01em;}
+.sub{font-size:13px;color:var(--muted);margin:0 0 24px;max-width:76ch;line-height:1.6;}
+table{width:100%;border-collapse:collapse;font-size:14px;}
+th{text-align:left;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--muted);padding:0 14px 8px 0;border-bottom:1px solid var(--ink);}
+th.r,td.r{text-align:right;}
+td{padding:10px 14px 10px 0;border-bottom:1px solid var(--line);}
+th:last-child,td:last-child{padding-right:0;}
+tbody tr:last-child td{border-bottom:none;}
+.model{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;}
+.sz{color:var(--muted);font-size:12px;margin-left:8px;font-family:system-ui,sans-serif;}
+.foot{margin:26px 0 0;font-size:12.5px;color:var(--muted);line-height:1.65;max-width:76ch;}
+.mono{font-family:ui-monospace,Menlo,monospace;}
+a{color:inherit;text-decoration:underline;text-underline-offset:2px;
+  text-decoration-color:var(--line);}
+a:hover{text-decoration-color:currentColor;}

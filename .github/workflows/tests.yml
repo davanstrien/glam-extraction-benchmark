@@ -1,0 +1,35 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:  # run by hand: gh workflow run tests
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # No pyproject here (the harness is uv single-file scripts). The harness and the scorer under
+      # test need only the standard library — every provider SDK is imported inside its adapter —
+      # so these three are here for the TESTS, not for the code:
+      #   openai + huggingface_hub  the failure classifier is checked against the SDKs' real
+      #                             exception classes, not only against stand-ins. Without them
+      #                             those tests skip, which is how a classification bug would ship.
+      #   httpx                     the transport errors both SDKs raise are httpx's.
+      # These ranges match the bounded ranges in glam_bench/harness.py's PEP 723 header — bounds,
+      # not pins: any version inside one resolves, and the two places have to agree or CI would be
+      # testing something the harness does not run. httpx carries no bound at all because it is a
+      # transitive dependency of both, and constraining it here could only fight their resolution.
+      - run: uv run --with pytest --with "openai>=3.6,<4" --with "huggingface_hub>=1.29,<2" --with httpx -m pytest tests
+
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      # Pinned: ruff's default rule set moves between releases; the config selects rules
+      # explicitly, and the pin keeps C901/B behaviour identical to local runs.
+      - run: uvx ruff@0.16.4 check glam_bench tests
