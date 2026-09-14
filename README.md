@@ -1,15 +1,20 @@
 # glam-extraction-benchmark
 
+Working harness version: **0.0.1** (`uv run glam_bench/harness.py --version`).
+The default dataset is `small-models-for-glam/glam-extraction-benchmark`, config
+`nls-index-cards`, split `test`. See [Dataset workflow](docs/DATASETS.md) for export,
+validation, adding collections and building the private static Space.
+
 Minimal benchmark for **structured extraction from GLAM documents** — index cards + registration
 forms. Given a card/form image **and a target JSON schema**, score how well a model extracts the
 fielded data, across models.
 
-> **Status: v1 on institution-verified gold.** The published board runs on
-> `NationalLibraryOfScotland/index-cards-eval` (public, CC0): 98 manuscript-catalogue index cards.
-> Labels were drafted by Qwen3.6-35B-A3B and checked by NLS cataloguers: 66 accepted as drafted,
-> 32 corrected. The original POC set (`--dataset` default) is 11
-> items with *silver* labels (NuExtract-3 zero-shot + one LLM reviewer agent) in a public HF
-> dataset; its scores stay illustrative.
+> **Status: private preview.** The NLS config contains 98 manuscript-catalogue index cards
+> from the public, CC0 `NationalLibraryOfScotland/index-cards-eval` dataset. Labels were
+> drafted by Qwen3.6-35B-A3B and checked by NLS cataloguers: 66 accepted, 32 corrected.
+> The preview reuses 12 historical runs, explicitly labelled as using the earlier schema.
+> New runs preserve the source schema's nullability. The original 11-item POC dataset
+> is private and has illustrative silver labels.
 
 ## Why
 
@@ -21,10 +26,10 @@ within a few points of a 235B frontier API on real archival cards.
 ## Layout
 
 **Canonical schema = standard JSON Schema.** It's the lingua franca (OpenAI/Gemini structured
-outputs, vLLM `guided_json`, Pydantic, outlines), so each model's *solver* converts from it to its
-own dialect (NuExtract template, `guided_json`, a prompt, or a Pydantic model). A `{"x-match":"exact"}`
+outputs, vLLM structured outputs, Pydantic, outlines), so each model's *solver* converts from it to its
+own dialect (NuExtract template, `structured_outputs.json`, a prompt, or a Pydantic model). A `{"x-match":"exact"}`
 annotation marks verbatim/identifier fields for the scorer. Items carry `target_schema` (JSON Schema)
-plus a derived `target_schema_nuextract`.
+and `expected_output`; adapters derive their own schema dialect.
 
 | file | role |
 |---|---|
@@ -34,7 +39,9 @@ plus a derived `target_schema_nuextract`.
 | `glam_bench/result_io.py` | the result *file*: the **submission contract** (`validate_submission`), envelope shape, atomic writes, the three file states, the resume contract, and the publication gate every consumer discovers its input through |
 | `glam_bench/validate_submission.py` | check one submission against that contract before sending it — the same checks the board runs |
 | `glam_bench/models.py` | model registry (labels, kinds, ids — **no endpoints**), typed-core item list, POC dataset id |
-| `glam_bench/nls.py` | NLS gold loader: dereferences the paratext schema, overlays `x-match:"exact"` on identifiers, pins a commit |
+| `glam_bench/dataset_contract.py` | generic config loading, schema/gold validation and evaluation identity |
+| `glam_bench/build_space.py` | static Space build from a pinned config and cached predictions; performs no inference |
+| `glam_bench/nls.py` | legacy NLS gold loader: dereferences the paratext schema, overlays `x-match:"exact"` on identifiers, pins a commit |
 | `glam_bench/rescore.py` | rescore cached predictions against the current gold + scorer; prints drift vs the stored scores |
 | `glam_bench/board.py` | the **two-axis board** (identifiers wrong / invented fields vs fields left blank), micro-averaged — the numbers on the page |
 | `glam_bench/site_nls.py` | builds `site/index.html` — the published board — from those numbers |
@@ -45,17 +52,17 @@ plus a derived `target_schema_nuextract`.
 
 A file in `results/` is a submission: a `model.label`, the commit sha of the gold snapshot
 (`dataset.inference_revision`), and one row per item with the model's raw output as a string.
-Nothing else is required. The board rescores every submission from those predictions; the harness
+Config-based submissions also identify config and split. The board rescores every submission from those predictions; the harness
 below is the reference producer, but any tool or script may produce the same shape.
 
 Contract, optional keys and example: **[`docs/SUBMISSION.md`](docs/SUBMISSION.md)**.
 
 ```bash
-uv run glam_bench/validate_submission.py results/nls/my-extractor.json
+uv run glam_bench/validate_submission.py results/nls-index-cards/my-extractor.json
 ```
 
-Exit 0 prints a summary; exit 1 lists every problem. The file goes in `results/nls/` for the NLS
-gold set (`results/` otherwise), named `<model.label>.json`.
+Exit 0 prints a summary; exit 1 lists every problem. New config results go in `results/<config>/`, named `<model.label>.json`. Historical NLS
+runs remain in `results/nls/`. Generated results are ignored until deliberately submitted.
 
 Harness-written files board as attested. Everything else boards as self-reported, marked `†`.
 The validator checks shape, ids and snapshot; it cannot check which model ran.
@@ -83,7 +90,7 @@ cancelled.
 ### 2. Smoke-test two items
 
 ```bash
-uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
+uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
   --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1 --limit 2
 ```
 
@@ -93,7 +100,7 @@ canonical name.
 ### 3. Run it
 
 ```bash
-uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
+uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
   --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1
 ```
 
@@ -104,14 +111,15 @@ uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
 - `--provider LABEL=NAME` pins the Inference Providers provider. Left off, the router chooses and
   never says.
 - `--no-thinking` sets `chat_template_kwargs.enable_thinking=false` for reasoning models.
-- `--max-tokens 1600` for `nls`; the 900 default truncates the entry lists.
+- `--max-tokens 1600` for `nls-index-cards`; the 900 default truncates the entry lists.
 
 Everything is resolved before the dataset loads, and the run prints how it will reach every model
 before the first paid request.
 
 ### 4. What lands on disk
 
-`--dataset nls` writes to `results/nls/`, everything else to `results/`.
+The default NLS config writes to `results/nls-index-cards/`; other configs use
+`results/<config>/`. Explicit `--dataset nls` retains the historical `results/nls/` path.
 
 | file | means |
 |---|---|
@@ -125,12 +133,12 @@ costs one row.
 ### 5. Recover a run
 
 ```bash
-uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
+uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
   --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1 --resume
 ```
 
 `--resume` continues the `.partial` if there is one, otherwise the `.json`. It refuses a file from
-a different dataset snapshot, item slice, model, or generation setting (`--max-tokens`,
+a different dataset snapshot, config, item slice, model, or generation setting (`--max-tokens`,
 `--no-thinking`). The transport is not part of that identity, so `--resume` with `--base-url`
 moves the failed rows onto a pinned serve; each row records which transport answered.
 
@@ -139,13 +147,17 @@ missing rows), `unparseable` (those plus rows the scorer could not parse), `all`
 
 ### 6. Rescore and build the board
 
+For the config-based private Space, use the pinned build in [Dataset workflow](docs/DATASETS.md).
+The following commands retain the historical NLS loader and page:
+
 ```bash
 uv run glam_bench/rescore.py           # drift vs the stored scores; --write to persist
 uv run glam_bench/board.py             # the two-axis board
 uv run glam_bench/site_nls.py          # writes site/index.html
 ```
 
-Predictions are stored, so a scorer, schema or gold change is a rescore, not a rerun. `board.py`
+Stored predictions can be rescored after a scorer or gold change. A changed input schema
+or prompt requires a new run to measure its effect on model output. `board.py`
 is what the page quotes: micro-averaged rates, `notes` field excluded. `rescore.py --write`
 rewrites atomically, records `scoring.gold_revision`, and never drops a row (a prediction with no
 gold row is kept, zeroed, and marked `scorer_error: "no gold for id"`).
@@ -153,7 +165,7 @@ gold row is kept, zeroed, and marked `scorer_error: "no gold for id"`).
 ### Result file format
 
 Format version 2. The envelope says what was asked; every row says how the answer was obtained.
-Abbreviated example with placeholders and rows omitted, so not itself a valid submission; the
+Historical NLS example with placeholders and rows omitted, so not itself a valid submission; the
 complete recorded run is `results/nls/lift-9B.json`.
 
 ```json
@@ -245,8 +257,8 @@ hf jobs cancel <namespace>/<job-id>
   every label reviewed by NLS cataloguers: 66 `verified` (accepted as drafted) and 32 `corrected`
   (edited by a reviewer). The drafts came from Qwen3.6-35B-A3B, so the two subsets are reported
   separately; whether that gives its relatives an advantage is not something this split measures.
-  Run it with `--dataset nls`.
-- `davanstrien/glam-extraction-bench-poc` (public) — the original POC. 11 items: `image ·
+  The new config is the default; `--dataset nls` explicitly uses the historical loader.
+- `davanstrien/glam-extraction-bench-poc` (private) — the original POC. 11 items: `image ·
   target_schema · silver_gold · item_quality · uncertain_fields · …`. Typed core (forms ×2, BPL ×2,
   Rubenstein, Peabody, Parisian) is good/usable; handwritten + multi-card items are deferred.
 
@@ -260,7 +272,7 @@ curl "https://huggingface.co/api/models?inference_provider=all&pipeline_tag=imag
 
 - [ ] More collections beyond NLS (LoC, BPL, Smithsonian); more document types beyond cards + forms
 - [ ] Human-verify the POC silver gold → gold (2nd/3rd review)
-- [ ] Confirm the 5 `other`-tagged source licenses in the (already public) POC dataset
+- [ ] Confirm the 5 `other`-tagged source licenses before publishing the private POC dataset
 - [ ] Inspect-AI scorer wrapper and a custom `evaluation_framework` registration (needs HF allow-list) for an HF "verified" path
 - [ ] Cost/latency columns pulled from the router; per-card-type sub-leaderboards; a constrained-decoding track
 

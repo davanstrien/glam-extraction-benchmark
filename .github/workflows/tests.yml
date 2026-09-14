@@ -23,7 +23,9 @@ jobs:
       # not pins: any version inside one resolves, and the two places have to agree or CI would be
       # testing something the harness does not run. httpx carries no bound at all because it is a
       # transitive dependency of both, and constraining it here could only fight their resolution.
-      - run: uv run --with pytest --with "openai>=3.6,<4" --with "huggingface_hub>=1.29,<2" --with httpx -m pytest tests
+      # Dataset-contract checks also round-trip embedded images through Parquet and validate gold
+      # against JSON Schema. They are offline tests; no provider requests or Hub uploads are made.
+      - run: uv run --with pytest --with "openai>=3.6,<4" --with "huggingface_hub>=1.29,<2" --with httpx --with "datasets>=5,<6" --with "jsonschema>=4,<5" --with "Pillow>=12,<13" -m pytest tests
 
   ruff:
     runs-on: ubuntu-latest

@@ -6,6 +6,7 @@
 #   "huggingface_hub>=1.29,<2",
 #   "openai>=3.6,<4",
 #   "pillow>=12.3,<13",
+#   "jsonschema>=4,<5",
 # ]
 # ///
 # Bounded to the verified major, not pinned. Both ends matter: openai 3.6's `max_retries` default
@@ -44,7 +45,9 @@ from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
 import result_io
-from models import DATASET, MODELS, TYPED_CORE
+from models import MODELS, TYPED_CORE
+from version import __version__
+from dataset_contract import BENCHMARK_ID, evaluation_identity, inference_items, load_hub_config
 from scorer import SCORER_VERSION, score
 from schema import field_notes, jsonschema_to_nuextract, to_guided_json
 
@@ -176,9 +179,13 @@ def run_nuextract_space(img, schema, spec) -> AdapterResponse:
 
     # solver: canonical JSON Schema -> NuExtract template dialect; template is pure structure,
     # so field descriptions ride in the instruction (parity with schema-in-prompt models)
-    schema_obj = json.loads(schema)
+    from dataset_contract import scoring_schema
+
+    schema_obj = scoring_schema(json.loads(schema))
     template = json.dumps(jsonschema_to_nuextract(schema_obj), ensure_ascii=False)
     instruction = "Extract the information present; copy identifiers verbatim; leave blanks out."
+    if spec.get("task_instructions"):
+        instruction += " " + spec["task_instructions"]
     notes = field_notes(schema_obj)
     if notes:
         instruction += " Field notes:\n" + "\n".join(f"- {n}" for n in notes)
@@ -193,6 +200,8 @@ def run_nuextract_space(img, schema, spec) -> AdapterResponse:
 
 
 def run_specialist_space(img, schema, spec) -> AdapterResponse:
+    if spec.get("task_instructions"):
+        raise ValueError("specialist_space cannot accept config task instructions; use a supported adapter")
     from gradio_client import Client, handle_file
 
     path = _temp_jpeg(img)
@@ -204,10 +213,10 @@ def run_specialist_space(img, schema, spec) -> AdapterResponse:
     return endpoint_response(spec, content, None)
 
 
-def _vlm_messages(img, schema):
+def _vlm_messages(img, schema, task_instructions=""):
     b64 = base64.b64encode(_png_bytes(img)).decode()
     return [{"role": "user", "content": [
-        {"type": "text", "text": VLM_PROMPT.format(schema=schema)},
+        {"type": "text", "text": (task_instructions + "\n" if task_instructions else "") + VLM_PROMPT.format(schema=schema)},
         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}]}]
 
 
@@ -226,7 +235,7 @@ def run_router_vlm(img, schema, spec) -> AdapterResponse:
     options = request_options_for(spec)
     if options:
         extra["extra_body"] = options
-    r = client.chat_completion(messages=_vlm_messages(img, schema), model=spec["id"],
+    r = client.chat_completion(messages=_vlm_messages(img, schema, spec.get("task_instructions", "")), model=spec["id"],
                                max_tokens=MAX_TOKENS, temperature=TEMPERATURE, **extra)
     choice = first_choice(r, spec)
     return endpoint_response(spec, choice.message.content, getattr(choice, "finish_reason", None))
@@ -234,14 +243,14 @@ def run_router_vlm(img, schema, spec) -> AdapterResponse:
 
 def openai_extra_body(spec, schema) -> dict:
     """Everything `run_openai` sends as `extra_body`: the spec's request options, plus guided
-    decoding when the spec asks for it. `guided_json` is the one member NOT echoed into
+    decoding when the spec asks for it. `structured_outputs` is the member NOT echoed into
     `provenance.request_options`: it is derived per item from that item's `target_schema` rather
     than chosen for the run, and the fact that guided decoding was on is already published in
     `model.guided`.
     """
     body = dict(request_options_for(spec))
-    if spec.get("guided"):  # schema-constrained decoding (vLLM guided_json) — e.g. lift
-        body["guided_json"] = to_guided_json(json.loads(schema))
+    if spec.get("guided"):  # current vLLM structured-output request
+        body["structured_outputs"] = {"json": to_guided_json(json.loads(schema))}
     return body
 
 
@@ -262,7 +271,7 @@ def run_openai(img, schema, spec) -> AdapterResponse:
     body = openai_extra_body(spec, schema)
     if body:
         extra["extra_body"] = body
-    r = client.chat.completions.create(model=spec["id"], messages=_vlm_messages(img, schema),
+    r = client.chat.completions.create(model=spec["id"], messages=_vlm_messages(img, schema, spec.get("task_instructions", "")),
                                        max_tokens=MAX_TOKENS, temperature=TEMPERATURE, **extra)
     choice = first_choice(r, spec)
     return endpoint_response(spec, choice.message.content, getattr(choice, "finish_reason", None))
@@ -477,6 +486,7 @@ def build_provenance(response: AdapterResponse, model_revision, log: AttemptLog,
         "thinking_disabled": thinking_disabled(options),
         "finish_reason": response.finish_reason,
         "harness_git_sha": git_sha,
+        "harness_version": __version__,
     }
 
 
@@ -498,7 +508,8 @@ def ok_row(item, response: AdapterResponse, log: AttemptLog, model_revision, git
     row = {"id": item["id"], "prediction": content,
            "inference_status": "ok", "attempts": log.attempts}
     try:
-        scores = score(item["gold"], content, item["target_schema"])
+        scores = score(item["gold"], content, item.get("scoring_schema", item["target_schema"]),
+                       exclude=item.get("scoring_exclude", ()))
     except Exception as exc:  # noqa: BLE001
         # A scorer crash is not an inference failure. Keep the prediction and the "ok" status,
         # and record the crash under its own key so it cannot be read as a transport error.
@@ -1189,8 +1200,23 @@ def positive_limit(value: str) -> int:
     return number
 
 
+def prepare_dataset(args):
+    config = args.config or ("nls-index-cards" if args.dataset == BENCHMARK_ID else None)
+    if config:
+        rows, manifest, revision = load_hub_config(args.dataset, config, args.dataset_revision)
+        items = inference_items(rows, manifest, args.limit)
+        block = build_dataset_block(args.dataset, args.dataset, args.dataset_revision, revision, items)
+        block.update(evaluation_identity(manifest))
+        block["task_instructions"] = manifest["task_instructions"]
+        return items, block, config
+    items, repo_id, revision = load_items(args.dataset, args.limit, args.dataset_revision)
+    block = build_dataset_block(repo_id, args.dataset, args.dataset_revision, revision, items)
+    return items, block, "nls" if args.dataset == "nls" else None
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
+    ap.add_argument("--version", action="version", version=f"glam-extraction-benchmark {__version__}")
     ap.add_argument("--models", default=None,
                     help="REQUIRED. Comma-separated registry labels, or 'all' for every enabled "
                          "entry. A bare run lists the labels and stops rather than calling every "
@@ -1212,7 +1238,8 @@ def main(argv=None):
                          "Recorded per row in provenance.request_options / thinking_disabled. On a "
                          "serve you pinned this is applied by the template; through the router it "
                          "is forwarded to a provider that may or may not honour it")
-    ap.add_argument("--dataset", default=DATASET, help='HF dataset id, or "nls" for NLS gold')
+    ap.add_argument("--dataset", default=BENCHMARK_ID, help='benchmark Hub dataset ID, or "nls" for legacy NLS runs')
+    ap.add_argument("--config", default=None, help="benchmark dataset config (default: nls-index-cards for the GLAM repo)")
     ap.add_argument("--dataset-revision", default="main",
                     help="branch/tag/sha; resolved once to a commit and pinned for the whole run")
     ap.add_argument("--limit", type=positive_limit, default=None,
@@ -1254,15 +1281,15 @@ def main(argv=None):
     specs = resolve_run_specs(args)
     print_run_plan(specs)
 
-    items, repo_id, inference_revision = load_items(args.dataset, args.limit, args.dataset_revision)
-    dataset_block = build_dataset_block(repo_id, args.dataset, args.dataset_revision,
-                                        inference_revision, items)
+    items, dataset_block, result_subdir = prepare_dataset(args)
     git_sha = harness_git_sha()
 
-    outdir = RESULTS / args.dataset if args.dataset == "nls" else RESULTS
+    outdir = RESULTS / result_subdir if result_subdir else RESULTS
     outdir.mkdir(parents=True, exist_ok=True)
     options = RunOptions(outdir=outdir, limit=args.limit, resume=args.resume, select=select)
     for spec in specs:
+        if dataset_block.get("config"):
+            spec = {**spec, "task_instructions": dataset_block["task_instructions"]}
         path = run_model(spec, items, dataset_block, git_sha, options, retry)
         print(f"  -> wrote {path.relative_to(RESULTS.parent)}")
 

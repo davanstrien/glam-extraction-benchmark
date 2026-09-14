@@ -28,6 +28,8 @@ RESUME_IDENTITY = (
     ("dataset", "id"),
     ("dataset", "inference_revision"),
     ("dataset", "item_ids_sha256"),
+    ("dataset", "config"),
+    ("dataset", "split"),
     ("model", "id"),
     ("model", "kind"),
     ("generation", "max_tokens"),
@@ -618,7 +620,7 @@ def explain_status(document: dict, status: str, gold_ids=None, expected_dataset_
 # What every file on one board must agree about. A board is one question asked of several models,
 # so two files made over different snapshots of a dataset that is still accepting rows are not two
 # answers to one question, however valid each is on its own.
-SNAPSHOT_KEYS = ("id", "inference_revision", "item_ids_sha256", "item_count")
+SNAPSHOT_KEYS = ("id", "inference_revision", "item_ids_sha256", "item_count", "config", "split")
 
 
 def describe_snapshot(document: dict) -> str:

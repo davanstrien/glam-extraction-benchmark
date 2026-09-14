@@ -38,7 +38,8 @@ ITEMS = [
 
 PROVENANCE_KEYS = {"served_by", "endpoint", "endpoint_attested", "model_revision_hub_main",
                    "timestamp", "latency_s", "retry_wait_s", "max_tokens", "temperature",
-                   "request_options", "thinking_disabled", "finish_reason", "harness_git_sha"}
+                   "request_options", "thinking_disabled", "finish_reason", "harness_git_sha",
+                   "harness_version"}
 
 
 def fake_spec(label, **extra):
@@ -156,6 +157,7 @@ def test_envelope_carries_dataset_scoring_and_run_provenance(monkeypatch, tmp_pa
         assert item["content_f1"] == 1.0
         assert "error" not in item
         assert set(item["provenance"]) == PROVENANCE_KEYS
+        assert item["provenance"]["harness_version"] == harness.__version__
         assert item["provenance"]["finish_reason"] == "stop"
         assert item["provenance"]["max_tokens"] == 900
         assert item["provenance"]["retry_wait_s"] == 0.0
@@ -723,6 +725,10 @@ def test_resume_keeps_ok_rows_and_redoes_transport_errors(monkeypatch, tmp_path)
     before = read_result(tmp_path, "fake-resume")
     assert [row["inference_status"] for row in before["items"]] == ["ok", "transport_error"]
     assert before["run"]["transport_errors"] == 1
+    # Simulate a pre-versioned run. Resume must not assign today's version to old predictions.
+    for row in before["items"]:
+        row["provenance"].pop("harness_version")
+    (tmp_path / "nls" / "fake-resume.json").write_text(json.dumps(before))
 
     second = install_scripted_adapter(monkeypatch, {})
     harness.main(["--models", spec["label"], "--dataset", "nls", "--resume"])
@@ -734,6 +740,8 @@ def test_resume_keeps_ok_rows_and_redoes_transport_errors(monkeypatch, tmp_path)
     assert redone["inference_status"] == "ok"
     assert redone["prediction"] == PERFECT
     assert redone["attempts"] == 2
+    assert "harness_version" not in after["items"][0]["provenance"]
+    assert redone["provenance"]["harness_version"] == harness.__version__
     assert after["run"]["started_at"] == before["run"]["started_at"]
     assert len(after["run"]["resumed_at"]) == 1
     assert after["run"]["resumed_at"][0].endswith("Z")
@@ -1802,7 +1810,8 @@ def test_guided_decoding_rides_alongside_the_request_options(monkeypatch, tmp_pa
 
     sent = requested[0]["extra_body"]
     assert sent["chat_template_kwargs"] == {"enable_thinking": False}
-    assert "guided_json" in sent
+    assert "json" in sent["structured_outputs"]
+    assert "guided_json" not in sent
 
     out = read_result(tmp_path, "lift-9B")
     assert out["model"]["guided"] is True
