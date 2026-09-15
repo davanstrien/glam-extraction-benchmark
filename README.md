@@ -286,3 +286,9 @@ On the POC set, silver gold is NuExtract-seeded → NuExtract is advantaged, and
 reviewed by NLS cataloguers; the 66 `verified` and 32 `corrected` rows are reported separately
 because of that drafting step, and any advantage to the drafting model's relatives is unverified. Some models tagged multimodal fail to serve images via
 their provider — the harness records this rather than hiding it.
+
+## Licence
+
+Code and documentation are available under the [MIT licence](LICENSE). Dataset
+images, annotations and source-derived result content retain their applicable
+source licences and attribution; see [Data](#data) and the dataset card.

@@ -205,10 +205,13 @@ def build(root, config, revision, results, output, legacy=False, navigation=None
                 "harness_version": __version__, "scorer_version": SCORER_VERSION, "metrics": METRICS,
                 "rows": rows, "prediction_files": evidence, "legacy_protocol": bool(legacy)}
     (output / "scores.json").write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n")
-    (output / "README.md").write_text('---\ntitle: GLAM extraction benchmark\nsdk: static\napp_file: index.html\n'
+    (output / "README.md").write_text('---\ntitle: GLAM extraction benchmark\nsdk: static\napp_file: index.html\nlicense: mit\n'
                                      'datasets:\n  - ' + manifest["benchmark_id"] + '\n---\n'
                                      '# GLAM extraction benchmark\n\nExperimental preview. '
-                                     'The page states the protocol used for each result set.\n')
+                                     'The page states the protocol used for each result set.\n\n'
+                                     'Code is MIT-licensed; example documents and source-derived content '
+                                     'retain the source rights and attribution described on the page.\n')
+    shutil.copy2(Path(__file__).resolve().parent.parent / "LICENSE", output / "LICENSE")
     return artifact
 
 
