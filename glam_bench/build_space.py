@@ -112,6 +112,12 @@ def page(manifest, revision, rows, legacy):
         f'data-direction="{"desc" if meta["direction"] == "higher" else "asc"}">'
         f'{meta["label"]} <span aria-hidden="true">↕</span></button></th>'
         for index, meta in enumerate(METRICS.values(), start=1))
+    size_buttons = '<button type="button" data-max-params="all" aria-pressed="true">All</button>'
+    for limit in (1, 3, 6, 12, 32, 128, 500):
+        available = any((size := parameter_billions(row["params"])) is not None and size < limit for row in rows)
+        disabled = "" if available else ' disabled title="No models in this size range"'
+        size_buttons += (f'<button type="button" data-max-params="{limit}" aria-pressed="false"'
+                         f'{disabled}>&lt;{limit}B</button>')
     table_script = (Path(__file__).resolve().parent.parent / "site/benchmark-table.js").read_text()
     css = (Path(__file__).resolve().parent.parent / "site/base.css").read_text()
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
@@ -122,6 +128,17 @@ small{{color:#666}}button,select{{font:inherit;margin:0 12px 14px 0}}.scroll{{ov
 th button{{margin:0;padding:6px 0;border:0;background:transparent;color:inherit;
 font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;text-align:inherit}}
 th button:hover{{color:var(--ink)}}th button:focus-visible{{outline:2px solid #3566a3;outline-offset:4px}}
+.size-bar{{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:14px 0;
+border-top:1px solid var(--line);margin-top:20px}}
+.size-options{{display:flex;align-items:center;gap:6px;overflow-x:auto;max-width:100%}}
+.size-options button{{margin:0;border:0;border-radius:14px;padding:4px 10px;background:transparent;
+color:var(--muted);font-size:14px;white-space:nowrap;cursor:pointer}}
+.size-options button[aria-pressed="true"]{{background:var(--ink);color:#fff}}
+.size-options button:hover:not(:disabled):not([aria-pressed="true"]){{background:#f1f2f4;color:var(--ink)}}
+.size-options button:disabled{{color:#9ca3af;cursor:default}}
+.size-options button:focus-visible{{outline:2px solid #3566a3;outline-offset:2px}}
+.size-label,#model-count{{font-size:13px;color:var(--muted);white-space:nowrap}}
+#model-count{{margin-left:auto}}
 .filter-note{{font-size:13px;color:var(--muted);margin:0 0 18px}}[hidden]{{display:none!important}}
 details{{margin-top:24px}}img{{max-width:100%;max-height:440px}}pre{{white-space:pre-wrap;font-size:12px}}
 </style></head><body><main class="wrap">
@@ -135,12 +152,11 @@ and reviewed by {esc(manifest["label_production"]["review"])}.</p>
 <p><b>Risk</b> is a wrong identifier or an invented field. <b>Workload</b> is a blank field that
 someone must fill. F1 combines extraction precision and recall. This is a small evaluation set;
 neighbouring scores should not be read as a definitive ranking.</p>
-<label for="max-params">Maximum model size </label><select id="max-params">
-<option value="all">All models</option><option value="3">≤3B</option>
-<option value="8">≤8B</option><option value="15">≤15B</option></select>
-<span id="model-count" role="status">{len(rows)} of {len(rows)} models</span>
+<div class="size-bar"><span class="size-label" id="size-label">Parameter size</span>
+<div class="size-options" role="group" aria-labelledby="size-label">{size_buttons}</div>
+<span id="model-count" role="status">{len(rows)} of {len(rows)} models</span></div>
 <p class="filter-note">Uses total parameters, including for mixture-of-experts models.
-Unknown sizes appear under All models. Click a column heading to sort; click again to reverse.</p>
+Unknown sizes appear under All. Click a column heading to sort; click again to reverse.</p>
 <div class="scroll"><table><thead><tr><th scope="col"><button type="button" data-column="0"
 data-direction="asc">Model <span aria-hidden="true">↕</span></button></th>{heading}</tr></thead>
 <tbody id="results">{table_body(rows)}</tbody></table></div>

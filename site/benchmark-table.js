@@ -1,6 +1,6 @@
 const body = document.getElementById('results');
 const buttons = [...document.querySelectorAll('[data-column]')];
-const sizeFilter = document.getElementById('max-params');
+const sizeButtons = [...document.querySelectorAll('[data-max-params]')];
 let activeColumn = 1;
 let direction = 'asc';
 
@@ -31,15 +31,17 @@ buttons.forEach(button => button.onclick = () => {
   sortRows();
 });
 
-sizeFilter.onchange = () => {
+function filterSize(limit) {
   let visible = 0;
   [...body.rows].forEach(row => {
-    row.hidden = sizeFilter.value !== 'all'
-      && (row.dataset.params === '' || Number(row.dataset.params) > Number(sizeFilter.value));
+    row.hidden = limit !== 'all'
+      && (row.dataset.params === '' || Number(row.dataset.params) >= Number(limit));
     if (!row.hidden) visible++;
   });
   document.getElementById('model-count').textContent = `${visible} of ${body.rows.length} models`;
   document.getElementById('empty-results').hidden = visible !== 0;
-};
+  sizeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.maxParams === limit)));
+}
+sizeButtons.forEach(button => button.onclick = () => filterSize(button.dataset.maxParams));
 sortRows();
-sizeFilter.onchange();
+filterSize('all');
