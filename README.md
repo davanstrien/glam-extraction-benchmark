@@ -21,7 +21,7 @@ collections and aim to make it easy for institutions to contribute reviewed
 examples and schemas, giving model builders concrete GLAM tasks to improve on.
 
 **Experimental preview:** ten models evaluated on both datasets below.
-The linked assets currently require access.
+The leaderboard and code are public; the dataset and raw-results bucket still require access.
 
 | Config | Scored cards | Task |
 |---|---:|---|
