@@ -1,8 +1,9 @@
 const body = document.getElementById('results');
 const buttons = [...document.querySelectorAll('[data-column]')];
 const sizeButtons = [...document.querySelectorAll('[data-max-params]')];
-let activeColumn = 1;
-let direction = 'asc';
+// Configs without identifier fields start with extraction F1.
+let activeColumn = [...body.rows].some(row => row.cells[1].dataset.value !== '') ? 1 : 4;
+let direction = activeColumn === 1 ? 'asc' : 'desc';
 
 function sortRows() {
   const sign = direction === 'asc' ? 1 : -1;
