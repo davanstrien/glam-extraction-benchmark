@@ -99,7 +99,7 @@ def table_body(rows):
     return "\n".join(parts)
 
 
-def page(manifest, revision, rows, legacy):
+def page(manifest, revision, rows, legacy, navigation=None):
     esc = html.escape
     dataset_url = f'https://huggingface.co/datasets/{manifest["benchmark_id"]}/tree/{revision}'
     source_url = f'https://huggingface.co/datasets/{manifest["source"]["repo_id"]}/tree/{manifest["source"]["revision"]}'
@@ -107,6 +107,19 @@ def page(manifest, revision, rows, legacy):
                "Their cached predictions are rescored against the new export. "
                "Models have not yet been rerun with its nullable schema." if legacy else
                "Predictions were generated for this benchmark config and revision.")
+    labels = manifest["label_production"]
+    if "draft_model" in labels:
+        label_description = (f"Labels drafted by {labels['draft_model']} "
+                             f"and reviewed by {labels['review']}.")
+    else:
+        label_description = (f"{labels.get('draft', 'Visual draft')}. "
+                             f"Printed fields: {labels.get('printed_fields', 'see manifest')}. "
+                             f"Corrections: {labels.get('corrections', 'see manifest')}.")
+    choices = navigation or [{"config": manifest["config"], "url": "index.html"}]
+    options = "".join(
+        f'<option value="{esc(choice["url"], quote=True)}"'
+        + (' selected' if choice["config"] == manifest["config"] else '')
+        + f'>{esc(choice["config"])}</option>' for choice in choices)
     heading = "".join(
         f'<th class="r" scope="col"><button type="button" data-column="{index}" '
         f'data-direction="{"desc" if meta["direction"] == "higher" else "asc"}">'
@@ -151,11 +164,10 @@ color:var(--muted);font-size:14px;white-space:nowrap;cursor:pointer}}
 details{{margin-top:24px}}img{{max-width:100%;max-height:440px}}pre{{white-space:pre-wrap;font-size:12px}}
 </style></head><body><main class="wrap">
 <h1>GLAM extraction benchmark</h1><p>{esc(manifest["title"])}</p>
-<label for="dataset">Dataset </label><select id="dataset"><option>{esc(manifest["config"])}</option></select>
+<label for="dataset">Dataset </label><select id="dataset">{options}</select>
 <p class="sub">{manifest["item_count"]} documents · {len(rows)} models · {esc(manifest["institution"]["name"])}</p>
 <p>Images and checked labels: <a href="{source_url}">{esc(manifest["source"]["repo_id"])}</a>
-({esc(manifest["license"])}). Labels drafted by {esc(manifest["label_production"]["draft_model"])}
-and reviewed by {esc(manifest["label_production"]["review"])}.</p>
+({esc(manifest["license"])}). {esc(label_description)}</p>
 <p class="notice">{warning}</p>
 <p><b>Risk</b> is a wrong identifier or an invented field. <b>Workload</b> is a blank field that
 someone must fill. F1 combines extraction precision and recall. This is a small evaluation set;
@@ -184,14 +196,16 @@ Small score differences may be noise.</p>
 split: <code>{esc(manifest['split'])}</code>; <a href="{dataset_url}">dataset revision {revision[:12]}</a>.
 Harness {__version__}; scorer {SCORER_VERSION}. Raw prediction files retain their original inference provenance.</p>
 <p><a href="scores.json">Scores and run provenance</a> · <a href="manifest.json">Dataset manifest</a> ·
-<a href="https://github.com/davanstrien/glam-extraction-benchmark">Code and raw predictions</a></p></details>
+<a href="https://github.com/davanstrien/glam-extraction-benchmark">Code</a> ·
+<a href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p></details>
 </main><script>{plot_script}
 {table_script}
+document.getElementById('dataset').addEventListener('change',e=>window.location.assign(e.target.value));
 fetch('example.json').then(r=>r.json()).then(x=>document.getElementById('gold').textContent=JSON.stringify(x,null,2));
 </script></body></html>'''
 
 
-def build(root, config, revision, results, output, legacy=False):
+def build(root, config, revision, results, output, legacy=False, navigation=None):
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
         raise ValueError("dataset revision must be an immutable Hub commit")
     if output.exists():
@@ -202,7 +216,7 @@ def build(root, config, revision, results, output, legacy=False):
     dataset, manifest = read_config(root, config)
     rows, evidence = evaluated_rows(dataset, manifest, revision, results, legacy)
     output.mkdir(parents=True)
-    (output / "index.html").write_text(page(manifest, revision, rows, bool(legacy)))
+    (output / "index.html").write_text(page(manifest, revision, rows, bool(legacy), navigation))
     from PIL import Image
     import io
     with Image.open(io.BytesIO(dataset[0]["image"]["bytes"])) as image:

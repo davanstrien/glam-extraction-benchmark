@@ -57,3 +57,43 @@ def test_static_build_scores_another_collection_without_inference(tmp_path):
     (results / "example.json").write_text(json.dumps(document))
     with pytest.raises(ValueError, match="config differs"):
         build(root, "museum-objects", "a" * 40, results, tmp_path / "wrong-space")
+
+
+def test_collection_pages_keep_config_identity_and_relative_navigation(tmp_path):
+    from build_collection_space import build_collection
+
+    root, rows, _manifest = collection(tmp_path)
+    results = tmp_path / "results"
+    results.mkdir()
+    document = {"model": {"label": "example", "params": "1B"},
+                "dataset": {"id": BENCHMARK_ID, "config": "museum-objects", "split": "test",
+                            "inference_revision": "a" * 40},
+                "items": [{"id": "one", "prediction": rows[0]["expected_output"]}]}
+    (results / "example.json").write_text(json.dumps(document))
+    import shutil
+    second = root / "botany-headers"
+    shutil.copytree(root / "museum-objects", second)
+    manifest = json.loads((second / "manifest.json").read_text())
+    manifest.update(config="botany-headers", data_file="botany-headers/test.parquet",
+                    label_production={"draft": "Visual assistant draft",
+                                      "printed_fields": "Human reviewed",
+                                      "corrections": "Replacement strings human reviewed"})
+    (second / "manifest.json").write_text(json.dumps(manifest))
+    second_results = tmp_path / "second-results"
+    second_results.mkdir()
+    document["dataset"].update(config="botany-headers", inference_revision="c" * 40)
+    (second_results / "example.json").write_text(json.dumps(document))
+    output = tmp_path / "space"
+    artifacts = build_collection([
+        {"root": root, "config": "museum-objects", "revision": "a" * 40, "results": results},
+        {"root": root, "config": "botany-headers", "revision": "c" * 40, "results": second_results},
+    ], output)
+    assert [x["benchmark"]["revision"] for x in artifacts] == ["a" * 40, "c" * 40]
+    main = (output / "index.html").read_text()
+    nested = (output / "botany-headers/index.html").read_text()
+    assert '<option value="botany-headers/index.html">botany-headers</option>' in main
+    assert '<option value="../index.html">museum-objects</option>' in nested
+    assert '<option value="../botany-headers/index.html" selected>' in nested
+    assert "Replacement strings human reviewed" in nested
+    assert (output / "botany-headers/example.jpg").is_file()
+    assert len(json.loads((output / "configs.json").read_text())) == 2

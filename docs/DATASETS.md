@@ -87,8 +87,7 @@ any inference setup can supply the [submission format](SUBMISSION.md).
 
 Our new run outputs live in the private bucket
 `small-models-for-glam/glam-extraction-results`, grouped by config and run. Uploads
-and downloads belong to the recipes, not scoring or validation. Bucket integration
-is implemented by the optional API recipe, with GPU Jobs execution still unverified;
+and downloads belong to the recipes, not scoring or validation. Both optional API and GPU Jobs recipes checkpoint predictions to the bucket;
 the commands here use local result files.
 Existing historical results remain in GitHub. The Space contains derived scores.
 
@@ -133,9 +132,8 @@ their original inference revision and harness provenance.
 5. Select models and inference settings, run with `--config`, validate submissions,
    then build that config's page from its pinned data and predictions.
 
-The current static build renders one selected config per deployment. Multiple
-collection exports and runs already share the loader/validator; a combined navigation
-page can follow when the second config exists. Do not average scores across collections
+The single-config builder renders one selected config. The collection builder below
+links independent config pages through a dataset selector. Do not average scores across collections
 without an explicit aggregation policy. HF benchmark registration remains separate:
 [registering a benchmark](https://huggingface.co/docs/hub/main/en/eval-results#registering-a-benchmark).
 
@@ -173,3 +171,28 @@ cards have no expected output. Keep both splits declared explicitly in the Hub c
 Run new submissions with `--config harvard-botany-headers` and the new dataset commit.
 NLS submissions keep their original config/revision; adding this config does not
 require rerunning NLS. A leaderboard for Harvard still requires its own model runs.
+
+## Build a Space with multiple configs
+
+List the pinned local dataset snapshots and completed result folders in `runs.json`:
+
+```json
+[
+  {"root": "./exports/nls-pinned", "config": "nls-index-cards",
+   "revision": "NLS_COMMIT_SHA", "results": "./results/nls-completed"},
+  {"root": "./exports/harvard-pinned", "config": "harvard-botany-headers",
+   "revision": "HARVARD_COMMIT_SHA", "results": "./results/harvard-completed"}
+]
+```
+
+Replace the revision placeholders with the full commits used for inference. Then:
+
+```bash
+uv run glam_bench/build_collection_space.py runs.json --output ./exports/space-both
+```
+
+The first config is the landing page; others have their own directories, scores,
+examples and provenance. Each result must match its selected config and revision.
+The selector navigates between pages without mixing or averaging collection scores.
+Use only completed result files; retain interrupted checkpoints in the results bucket.
+Upload the resulting directory to the existing private Space as before.
