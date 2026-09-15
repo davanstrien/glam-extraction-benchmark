@@ -138,3 +138,38 @@ collection exports and runs already share the loader/validator; a combined navig
 page can follow when the second config exists. Do not average scores across collections
 without an explicit aggregation policy. HF benchmark registration remains separate:
 [registering a benchmark](https://huggingface.co/docs/hub/main/en/eval-results#registering-a-benchmark).
+
+## Harvard botany headers
+
+`harvard-botany-headers` adds 30 scored cards from Harvard University Botany Libraries.
+The nullable fields are `taxon_name`, `taxon_authority`, and `taxon_correction`.
+Original printed headings are human-reviewed; both handwritten replacement strings
+are human-confirmed. Correction absence was visually audited, with per-field review
+provenance rather than claiming every null was individually human-reviewed.
+
+Five unsupported cards from a separate random schema audit are retained in the
+Hub `review` split with `schema_applicable: false`, a reason and no extraction gold.
+The manifest points only to `test`, so the existing loader excludes the review split
+without changing scoring or inference. Null field values mean absent, not unreadable.
+
+The converter uses a reviewed annotation JSON, the corresponding source JPEGs, a
+schema-audit directory (`findings.json`, `metadata/`, `images/`) and the pinned source
+card. It writes a new config directory; it does not infer, upload, or update the Hub
+card's config list. Image checksums must match the annotation provenance.
+
+```bash
+uv run glam_bench/export_harvard.py --review reviewed.json --images ./source-images \
+  --audit ./schema-audit --source-card ./source-card.md --output ./exports/harvard-v1
+uv run glam_bench/validate_dataset.py ./exports/harvard-v1 --config harvard-botany-headers
+```
+
+The review JSON declares `source_dataset`, `source_revision`, `target_schema` and
+`items`. Each item supplies its stable `id`, source row/page/item URL, image checksum,
+`expected_output`, `printed_fields_reviewed_by_human`, `correction_reviewed_by_human`,
+`schema_applicable`, `scoring_eligible` and `review_status`. Only scoring-eligible
+items enter `test`; pending labels remain drafts in `review`. Audit-only unsupported
+cards have no expected output. Keep both splits declared explicitly in the Hub card.
+
+Run new submissions with `--config harvard-botany-headers` and the new dataset commit.
+NLS submissions keep their original config/revision; adding this config does not
+require rerunning NLS. A leaderboard for Harvard still requires its own model runs.
