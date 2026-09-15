@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["datasets>=5,<6", "huggingface_hub>=1.31,<2", "httpx>=0.28,<1", "pillow>=12,<13", "jsonschema>=4,<5"]
 # ///
-"""Optional HF API producer: pinned NLS export -> submission JSON + bucket checkpoints.
+"""Optional HF API producer: pinned benchmark config -> submission JSON + bucket checkpoints.
 
 Run from a checkout with `uv run examples/inference/api_batch.py --help`.
 The benchmark does not import this recipe or require its providers/storage.
@@ -49,6 +49,9 @@ def main():  # noqa: C901 — linear, optional one-off batch recipe
     parser.add_argument("--provider", choices=["deepinfra", "novita"], help="Override the route; preserved per row")
     parser.add_argument("--budget-usd", type=float, required=True)
     parser.add_argument("--run-id", default=RUN_ID)
+    parser.add_argument("--dataset", default=DATASET)
+    parser.add_argument("--config", default=CONFIG)
+    parser.add_argument("--revision", default=REVISION)
     args = parser.parse_args()
     model_id, provider, params, price_in, price_out, max_tokens, options = MODELS[args.model]
     provider = args.provider or provider
@@ -56,16 +59,16 @@ def main():  # noqa: C901 — linear, optional one-off batch recipe
     h.MAX_TOKENS = max_tokens
     api = HfApi()
     assert api.bucket_info(BUCKET).private, "Expected private output bucket"
-    rows, manifest, revision = load_hub_config(DATASET, CONFIG, REVISION)
+    rows, manifest, revision = load_hub_config(args.dataset, args.config, args.revision)
     items = inference_items(rows, manifest)
     git_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     spec = {"label": args.model, "id": model_id, "kind": "router_vlm", "provider": provider,
             "params": params, "request_options": options}
-    folder = ROOT / "results" / CONFIG / args.run_id
+    folder = ROOT / "results" / args.config / args.run_id
     folder.mkdir(parents=True, exist_ok=True)
     final = folder / f"{args.model}.json"
     partial = folder / f"{args.model}.json.partial"
-    identity = {"id": DATASET, "inference_revision": revision, "config": CONFIG,
+    identity = {"id": args.dataset, "inference_revision": revision, "config": args.config,
                 "split": manifest["split"], "item_count": len(items),
                 "item_ids_sha256": h.result_io.item_ids_sha256(i["id"] for i in items)}
     doc = {"format_version": 2, "model": h.public_model_block(spec), "dataset": identity,
@@ -97,7 +100,7 @@ def main():  # noqa: C901 — linear, optional one-off batch recipe
             doc["model"]["provider"] = actual[0] if len(actual) == 1 else "mixed; see items[].provenance.endpoint"
         path = final if complete else partial
         atomic_write_json(path, doc)
-        api.batch_bucket_files(BUCKET, add=[(path, f"{CONFIG}/{args.run_id}/{path.name}")])
+        api.batch_bucket_files(BUCKET, add=[(path, f"{args.config}/{args.run_id}/{path.name}")])
         if complete:
             partial.unlink(missing_ok=True)
 
