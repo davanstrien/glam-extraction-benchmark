@@ -207,7 +207,7 @@ def build(root, config, revision, results, output, legacy=False, navigation=None
     (output / "scores.json").write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n")
     (output / "README.md").write_text('---\ntitle: GLAM extraction benchmark\nsdk: static\napp_file: index.html\n'
                                      'datasets:\n  - ' + manifest["benchmark_id"] + '\n---\n'
-                                     '# GLAM extraction benchmark\n\nPrivate preview. '
+                                     '# GLAM extraction benchmark\n\nExperimental preview. '
                                      'The page states the protocol used for each result set.\n')
     return artifact
 

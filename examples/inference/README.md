@@ -18,10 +18,11 @@ settings and output location for completed runs. Run notes distinguish completed
 predictions from prepared or interrupted runs.
 
 - [HF Jobs serving example](hf-jobs.md): the existing vLLM launch example.
-- [API batch and recorded results](api-2026-09-15.md): three complete NLS runs
-  and one partial run, with [the optional producer](api_batch.py).
-- [Batch Jobs recipe](jobs-batch.md): prepared [worker and launcher](jobs_batch.py);
-  GPU execution remains unverified.
+- [NLS API runs](api-2026-09-15.md) and [Harvard API runs](api-harvard-2026-09-15.md):
+  four complete models per config, using [the optional producer](api_batch.py).
+- [Batch Jobs recipe](jobs-batch.md), [NLS GPU runs](jobs-2026-09-15.md) and
+  [Harvard GPU runs](jobs-harvard-2026-09-15.md): six complete models per config,
+  using [the optional worker and launcher](jobs_batch.py).
 
 ## Our run outputs
 
@@ -34,7 +35,7 @@ nls-index-cards/<run-id>/<model-label>.json
 
 Use a distinct run directory for each batch so reruns keep their earlier outputs.
 The API recipe uploads checkpoints and completed files to this bucket. The Jobs
-recipe also implements uploads, pending end-to-end GPU verification. The harness
+recipe also uploads checkpoints and completed results. The harness
 writes local `results/<config>/` files; validation and Space builds read local
 files too. Recipes handle storage around those existing tools.
 The Space publishes derived scores. Other submitters can deliver the same JSON

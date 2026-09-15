@@ -3,18 +3,21 @@
 Working harness version: **0.0.1** (`uv run glam_bench/harness.py --version`).
 The default dataset is `small-models-for-glam/glam-extraction-benchmark`, config
 `nls-index-cards`, split `test`. See [Dataset workflow](docs/DATASETS.md) for export,
-validation, adding collections and building the private static Space.
+validation, adding collections and building the static Space.
 
 Minimal benchmark for **structured extraction from GLAM documents** — index cards + registration
 forms. Given a card/form image **and a target JSON schema**, score how well a model extracts the
 fielded data, across models.
 
-> **Status: private preview.** The NLS config contains 98 manuscript-catalogue index cards
-> from the public, CC0 `NationalLibraryOfScotland/index-cards-eval` dataset. Labels were
-> drafted by Qwen3.6-35B-A3B and checked by NLS cataloguers: 66 accepted, 32 corrected.
-> The preview reuses 12 historical runs, explicitly labelled as using the earlier schema.
-> New runs preserve the source schema's nullability. The original 11-item POC dataset
-> is private and has illustrative silver labels.
+> **Status: experimental preview.** Ten models have been evaluated on both configs:
+> 98 NLS manuscript-catalogue cards and 30 Harvard botany cards. The leaderboard
+> offers separate dataset scores and an Overall F1 with equal dataset weighting.
+> Current runs use the nullable schemas; the 12 historical NLS runs are retained
+> separately for reference. The original 11-item POC dataset remains private.
+
+[Leaderboard](https://huggingface.co/spaces/small-models-for-glam/glam-extraction-benchmark) ·
+[Benchmark dataset](https://huggingface.co/datasets/small-models-for-glam/glam-extraction-benchmark) ·
+[Raw predictions](https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results)
 
 ## Why
 
@@ -141,7 +144,7 @@ missing rows), `unparseable` (those plus rows the scorer could not parse), `all`
 
 ### 6. Rescore and build the board
 
-For the config-based private Space, use the pinned build in [Dataset workflow](docs/DATASETS.md).
+For the config-based Space, use the pinned build in [Dataset workflow](docs/DATASETS.md).
 The following commands retain the historical NLS loader and page:
 
 ```bash
@@ -252,6 +255,12 @@ hf jobs cancel <namespace>/<job-id>
   (edited by a reviewer). The drafts came from Qwen3.6-35B-A3B, so the two subsets are reported
   separately; whether that gives its relatives an advantage is not something this split measures.
   The new config is the default; `--dataset nls` explicitly uses the historical loader.
+- `harvard-botany-headers` — 30 curated cards from Harvard Botany Libraries via
+  `biglam/index-cards-harvard-botany-metropolitan-flora`. Extract printed taxon name,
+  authority and explicit handwritten taxon corrections. Printed fields and both
+  correction strings were human-reviewed; correction absence was assistant-audited.
+  Five unsupported cards are retained in an unscored review split. The source reports
+  public-domain status; preserve Harvard attribution. See [config details](docs/DATASETS.md).
 - `davanstrien/glam-extraction-bench-poc` (private) — the original POC. 11 items: `image ·
   target_schema · silver_gold · item_quality · uncertain_fields · …`. Typed core (forms ×2, BPL ×2,
   Rubenstein, Peabody, Parisian) is good/usable; handwritten + multi-card items are deferred.
@@ -264,7 +273,7 @@ curl "https://huggingface.co/api/models?inference_provider=all&pipeline_tag=imag
 
 ## Roadmap
 
-- [ ] More collections beyond NLS (LoC, BPL, Smithsonian); more document types beyond cards + forms
+- [ ] More collections beyond NLS and Harvard (LoC, BPL, Smithsonian); more document types beyond cards + forms
 - [ ] Human-verify the POC silver gold → gold (2nd/3rd review)
 - [ ] Confirm the 5 `other`-tagged source licenses before publishing the private POC dataset
 - [ ] Inspect-AI scorer wrapper and a custom `evaluation_framework` registration (needs HF allow-list) for an HF "verified" path
