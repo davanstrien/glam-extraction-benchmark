@@ -60,6 +60,7 @@ def evaluated_rows(dataset, manifest, revision, results, legacy):
             scores.append({**scored, "label_status": metadata.get("_label_status")})
         summary = summarise(document["model"]["label"], document["model"].get("params", "?"), scores,
                             attested=is_attested(document))
+        summary["model_id"] = document["model"].get("id")
         summaries.append(summary)
         evidence.append({"file": path.name, "model": document["model"],
                          "inference_dataset": document["dataset"], "legacy_protocol": bool(legacy)})
@@ -87,8 +88,13 @@ def table_body(rows):
         params = parameter_billions(row["params"])
         size = html.escape(str(row["params"])) if params is not None else "size unknown"
         label = html.escape(row["label"])
+        model_id = row.get("model_id") or ""
+        name = label
+        if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", model_id):
+            name = (f'<a href="https://huggingface.co/{html.escape(model_id)}" '
+                    f'target="_blank" rel="noopener noreferrer" title="{html.escape(model_id)}">{label}</a>')
         parts.append(f'<tr data-params="{params if params is not None else ""}">'
-                     f'<td data-value="{label}">{label} <small>{size}</small></td>'
+                     f'<td data-value="{label}">{name} <small>{size}</small></td>'
                      + "".join(cells) + "</tr>")
     return "\n".join(parts)
 
