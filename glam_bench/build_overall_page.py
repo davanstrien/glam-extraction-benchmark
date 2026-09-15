@@ -48,16 +48,16 @@ Click a column heading to sort; click again to reverse.</p>
 {table_body(rows, {'content_f1': {}})}</tbody></table></div>
 <p id="empty-results" hidden>No models match this size limit.</p>
 <p class="foot">Scores are shown on a 0–100 scale. Dataset weights, component scores and pinned
-revisions are recorded in <a href="overall-scores.json">the score download</a>.</p>
+revisions are recorded in <a target="_blank" rel="noopener noreferrer" href="overall-scores.json">the score download</a>.</p>
 <section class="plot-section" aria-labelledby="plot-title"><h2 id="plot-title">Size vs. overall extraction quality</h2>
 <p>Upper-left is better: smaller models, higher overall F1. Teal points show the observed Pareto frontier.</p>
 <svg id="size-plot" data-f1-column="1" viewBox="0 0 760 360" role="group" aria-label="Model size versus overall extraction F1"></svg>
 <p id="plot-note"></p></section>
 <details><summary>Sources and reproducibility</summary>
-<p><a href="overall-scores.json">Overall scores and component provenance</a> ·
-<a href="configs.json">Dataset configurations and revisions</a> ·
-<a href="https://github.com/davanstrien/glam-extraction-benchmark">Code</a> ·
-<a href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p>
+<p><a target="_blank" rel="noopener noreferrer" href="overall-scores.json">Overall scores and component provenance</a> ·
+<a target="_blank" rel="noopener noreferrer" href="configs.json">Dataset configurations and revisions</a> ·
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/davanstrien/glam-extraction-benchmark">Code</a> ·
+<a target="_blank" rel="noopener noreferrer" href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p>
 <p>The overall view combines the selected dataset results; it does not create a new dataset or change individual scores.</p>
 </details></main><script>{plot_script}\n{table_script}
 </script></body></html>'''

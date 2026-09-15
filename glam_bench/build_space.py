@@ -145,7 +145,7 @@ def page(manifest, revision, rows, legacy, navigation=None):
 <h1>GLAM extraction benchmark</h1><p>{esc(manifest["title"])}</p>
 <label for="dataset">Dataset </label><select id="dataset">{options}</select>
 <p class="sub">{manifest["item_count"]} documents · {len(rows)} models · {esc(manifest["institution"]["name"])}</p>
-<p>Images and checked labels: <a href="{source_url}">{esc(manifest["source"]["repo_id"])}</a>
+<p>Images and checked labels: <a target="_blank" rel="noopener noreferrer" href="{source_url}">{esc(manifest["source"]["repo_id"])}</a>
 ({esc(manifest["license"])}). {esc(label_description)}</p>
 <p class="notice">{warning}</p>
 <p><b>Risk</b> is a wrong identifier or an invented field. <b>Workload</b> is a blank field that
@@ -172,11 +172,11 @@ Small score differences may be noise.</p>
 <details><summary>Inspect an example document and its checked output</summary>
 <img src="example.jpg" alt="Example document from the selected evaluation dataset"><pre id="gold"></pre></details>
 <details><summary>Reproducibility and downloads</summary><p>Config: <code>{esc(manifest['config'])}</code>;
-split: <code>{esc(manifest['split'])}</code>; <a href="{dataset_url}">dataset revision {revision[:12]}</a>.
+split: <code>{esc(manifest['split'])}</code>; <a target="_blank" rel="noopener noreferrer" href="{dataset_url}">dataset revision {revision[:12]}</a>.
 Harness {__version__}; scorer {SCORER_VERSION}. Raw prediction files retain their original inference provenance.</p>
-<p><a href="scores.json">Scores and run provenance</a> · <a href="manifest.json">Dataset manifest</a> ·
-<a href="https://github.com/davanstrien/glam-extraction-benchmark">Code</a> ·
-<a href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p></details>
+<p><a target="_blank" rel="noopener noreferrer" href="scores.json">Scores and run provenance</a> · <a target="_blank" rel="noopener noreferrer" href="manifest.json">Dataset manifest</a> ·
+<a target="_blank" rel="noopener noreferrer" href="https://github.com/davanstrien/glam-extraction-benchmark">Code</a> ·
+<a target="_blank" rel="noopener noreferrer" href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p></details>
 </main><script>{plot_script}
 {table_script}
 fetch('example.json').then(r=>r.json()).then(x=>document.getElementById('gold').textContent=JSON.stringify(x,null,2));
