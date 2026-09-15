@@ -14,17 +14,18 @@ Keep launch scripts, serving configurations, dependency versions and short run
 notes alongside the recipe they describe. Scripts can declare their own dependencies
 (for example with UV script metadata), without adding Jobs tooling to the harness.
 Record the command, model revision when known, hardware or API provider, generation
-settings and output location for completed runs. Actual recipes and run notes will
-be added as the selected batch is executed; this directory does not claim those
-runs have happened.
+settings and output location for completed runs. Run notes distinguish completed
+predictions from prepared or interrupted runs.
 
 - [HF Jobs serving example](hf-jobs.md): the existing vLLM launch example.
-- Future API and batch Jobs scripts belong here too; neither becomes a required
-  benchmark workflow.
+- [API batch and recorded results](api-2026-09-15.md): three complete NLS runs
+  and one partial run, with [the optional producer](api_batch.py).
+- [Batch Jobs recipe](jobs-batch.md): prepared [worker and launcher](jobs_batch.py);
+  GPU execution remains unverified.
 
 ## Our run outputs
 
-The private bucket `small-models-for-glam/glam-extraction-results` is the planned
+The private bucket `small-models-for-glam/glam-extraction-results` is the
 home for this project's predictions and checkpoints, for example:
 
 ```text
@@ -32,8 +33,9 @@ nls-index-cards/<run-id>/<model-label>.json
 ```
 
 Use a distinct run directory for each batch so reruns keep their earlier outputs.
-The bucket exists, but automated uploads are not implemented yet. The harness
-currently writes local `results/<config>/` files; validation and Space builds read
-local files too. Recipes will handle upload/download around those existing tools.
+The API recipe uploads checkpoints and completed files to this bucket. The Jobs
+recipe also implements uploads, pending end-to-end GPU verification. The harness
+writes local `results/<config>/` files; validation and Space builds read local
+files too. Recipes handle storage around those existing tools.
 The Space publishes derived scores. Other submitters can deliver the same JSON
 without using our bucket.

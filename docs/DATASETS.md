@@ -85,10 +85,11 @@ Space adapter cannot accept task instructions and is unsupported for config runs
 API scripts and records of how our runs were made. They live outside the harness;
 any inference setup can supply the [submission format](SUBMISSION.md).
 
-Our new run outputs will live in the private bucket
+Our new run outputs live in the private bucket
 `small-models-for-glam/glam-extraction-results`, grouped by config and run. Uploads
 and downloads belong to the recipes, not scoring or validation. Bucket integration
-is still to be implemented; the commands here currently use local result files.
+is implemented by the optional API recipe, with GPU Jobs execution still unverified;
+the commands here use local result files.
 Existing historical results remain in GitHub. The Space contains derived scores.
 
 ## Build and deploy the private Space
