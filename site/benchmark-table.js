@@ -41,6 +41,7 @@ function filterSize(limit) {
   document.getElementById('model-count').textContent = `${visible} of ${body.rows.length} models`;
   document.getElementById('empty-results').hidden = visible !== 0;
   sizeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.maxParams === limit)));
+  drawSizePlot([...body.rows]);
 }
 sizeButtons.forEach(button => button.onclick = () => filterSize(button.dataset.maxParams));
 sortRows();

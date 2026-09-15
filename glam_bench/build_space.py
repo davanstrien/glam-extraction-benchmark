@@ -119,6 +119,7 @@ def page(manifest, revision, rows, legacy):
         size_buttons += (f'<button type="button" data-max-params="{limit}" aria-pressed="false"'
                          f'{disabled}>&lt;{limit}B</button>')
     table_script = (Path(__file__).resolve().parent.parent / "site/benchmark-table.js").read_text()
+    plot_script = (Path(__file__).resolve().parent.parent / "site/benchmark-plot.js").read_text()
     css = (Path(__file__).resolve().parent.parent / "site/base.css").read_text()
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>GLAM extraction benchmark</title>
@@ -140,6 +141,13 @@ color:var(--muted);font-size:14px;white-space:nowrap;cursor:pointer}}
 .size-label,#model-count{{font-size:13px;color:var(--muted);white-space:nowrap}}
 #model-count{{margin-left:auto}}
 .filter-note{{font-size:13px;color:var(--muted);margin:0 0 18px}}[hidden]{{display:none!important}}
+.plot-section{{margin-top:30px}}.plot-section h2{{font-size:18px;margin-bottom:6px}}
+.plot-section p{{font-size:13px;color:var(--muted)}}#size-plot{{width:100%;height:auto;display:block}}
+.plot-grid{{stroke:var(--line);stroke-width:1}}.plot-tick,.plot-axis{{font-size:11px;fill:var(--muted)}}
+.plot-frontier{{fill:none;stroke:#286c66;stroke-width:2;stroke-dasharray:5 4;opacity:.7}}
+.plot-point{{fill:#a3aab4;stroke:white;stroke-width:1.5}}.frontier-point{{fill:#286c66}}
+#size-plot a:hover .plot-point,#size-plot a:focus .plot-point{{stroke:var(--ink);stroke-width:3}}
+.plot-label{{font-size:11px;fill:var(--ink);pointer-events:none}}
 details{{margin-top:24px}}img{{max-width:100%;max-height:440px}}pre{{white-space:pre-wrap;font-size:12px}}
 </style></head><body><main class="wrap">
 <h1>GLAM extraction benchmark</h1><p>{esc(manifest["title"])}</p>
@@ -164,6 +172,12 @@ data-direction="asc">Model <span aria-hidden="true">↕</span></button></th>{hea
 <p class="foot">Rates are micro-averaged over documents; F1 is the mean per-document score.
 An em dash means no gold identifiers were filled, not zero errors. Excluded fields:
 {esc(', '.join(manifest['scoring']['exclude']) or 'none')}.</p>
+<section class="plot-section" aria-labelledby="plot-title"><h2 id="plot-title">Size vs. extraction quality</h2>
+<p>Upper-left is better: smaller models, higher F1. Teal points and the dashed line show the
+observed Pareto frontier: no other model uses as few parameters and scores as highly.
+Small score differences may be noise.</p>
+<svg id="size-plot" viewBox="0 0 760 360" role="group" aria-label="Model size versus extraction F1"></svg>
+<p id="plot-note"></p></section>
 <details><summary>Inspect an example document and its checked output</summary>
 <img src="example.jpg" alt="Example document from the selected evaluation dataset"><pre id="gold"></pre></details>
 <details><summary>Reproducibility and downloads</summary><p>Config: <code>{esc(manifest['config'])}</code>;
@@ -171,7 +185,8 @@ split: <code>{esc(manifest['split'])}</code>; <a href="{dataset_url}">dataset re
 Harness {__version__}; scorer {SCORER_VERSION}. Raw prediction files retain their original inference provenance.</p>
 <p><a href="scores.json">Scores and run provenance</a> · <a href="manifest.json">Dataset manifest</a> ·
 <a href="https://github.com/davanstrien/glam-extraction-benchmark">Code and raw predictions</a></p></details>
-</main><script>{table_script}
+</main><script>{plot_script}
+{table_script}
 fetch('example.json').then(r=>r.json()).then(x=>document.getElementById('gold').textContent=JSON.stringify(x,null,2));
 </script></body></html>'''
 
