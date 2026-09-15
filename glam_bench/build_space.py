@@ -66,19 +66,29 @@ def evaluated_rows(dataset, manifest, revision, results, legacy):
     return sorted(summaries, key=risk_sort_key), evidence
 
 
+def parameter_billions(value):
+    """Read total size from labels such as '235B (22B act)' or '500M'."""
+    match = re.match(r"^\s*(\d+(?:\.\d+)?)\s*([BM])\b", str(value), re.IGNORECASE)
+    if not match:
+        return None
+    return float(match[1]) / (1000 if match[2].upper() == "M" else 1)
+
+
 def table_body(rows):
     parts = []
     for row in rows:
         cells = []
         for key in METRICS:
-            value = row[key] * 100
-            display = f"{value:.1f}" + ("" if key == "content_f1" else "%")
+            value = row[key]
+            display = f"{value * 100:.1f}" + ("" if key == "content_f1" else "%")
             if key == "identifiers_wrong" and not row["n_ident_filled"]:
-                display = "—"
-            cells.append(f'<td class="r">{display}</td>')
-        risk = row["identifiers_wrong"] if row["n_ident_filled"] else 2
-        parts.append(f'<tr data-risk="{risk:.8f}" data-f1="{-row["content_f1"]:.8f}">'
-                     f'<td>{html.escape(row["label"])} <small>{html.escape(str(row["params"]))}</small></td>'
+                display, value = "—", ""
+            cells.append(f'<td class="r" data-value="{value}">{display}</td>')
+        params = parameter_billions(row["params"])
+        size = html.escape(str(row["params"])) if params is not None else "size unknown"
+        label = html.escape(row["label"])
+        parts.append(f'<tr data-params="{params if params is not None else ""}">'
+                     f'<td data-value="{label}">{label} <small>{size}</small></td>'
                      + "".join(cells) + "</tr>")
     return "\n".join(parts)
 
@@ -91,13 +101,22 @@ def page(manifest, revision, rows, legacy):
                "Their cached predictions are rescored against the new export. "
                "Models have not yet been rerun with its nullable schema." if legacy else
                "Predictions were generated for this benchmark config and revision.")
-    heading = "".join(f'<th class="r">{meta["label"]}</th>' for meta in METRICS.values())
+    heading = "".join(
+        f'<th class="r" scope="col"><button type="button" data-column="{index}" '
+        f'data-direction="{"desc" if meta["direction"] == "higher" else "asc"}">'
+        f'{meta["label"]} <span aria-hidden="true">↕</span></button></th>'
+        for index, meta in enumerate(METRICS.values(), start=1))
+    table_script = (Path(__file__).resolve().parent.parent / "site/benchmark-table.js").read_text()
     css = (Path(__file__).resolve().parent.parent / "site/base.css").read_text()
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>GLAM extraction benchmark</title>
 <style>{css}
 .wrap{{max-width:1080px}}.notice{{border-left:3px solid #8b6c36;padding:8px 16px;background:#faf8f2}}
 small{{color:#666}}button,select{{font:inherit;margin:0 12px 14px 0}}.scroll{{overflow-x:auto}}
+th button{{margin:0;padding:6px 0;border:0;background:transparent;color:inherit;
+font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;text-align:inherit}}
+th button:hover{{color:var(--ink)}}th button:focus-visible{{outline:2px solid #3566a3;outline-offset:4px}}
+.filter-note{{font-size:13px;color:var(--muted);margin:0 0 18px}}[hidden]{{display:none!important}}
 details{{margin-top:24px}}img{{max-width:100%;max-height:440px}}pre{{white-space:pre-wrap;font-size:12px}}
 </style></head><body><main class="wrap">
 <h1>GLAM extraction benchmark</h1><p>{esc(manifest["title"])}</p>
@@ -110,8 +129,16 @@ and reviewed by {esc(manifest["label_production"]["review"])}.</p>
 <p><b>Risk</b> is a wrong identifier or an invented field. <b>Workload</b> is a blank field that
 someone must fill. F1 combines extraction precision and recall. This is a small evaluation set;
 neighbouring scores should not be read as a definitive ranking.</p>
-<button data-sort="risk">Sort by identifiers wrong</button><button data-sort="f1">Sort by F1</button>
-<div class="scroll"><table><thead><tr><th>Model</th>{heading}</tr></thead><tbody id="results">{table_body(rows)}</tbody></table></div>
+<label for="max-params">Maximum model size </label><select id="max-params">
+<option value="all">All models</option><option value="3">≤3B</option>
+<option value="8">≤8B</option><option value="15">≤15B</option></select>
+<span id="model-count" role="status">{len(rows)} of {len(rows)} models</span>
+<p class="filter-note">Uses total parameters, including for mixture-of-experts models.
+Unknown sizes appear under All models. Click a column heading to sort; click again to reverse.</p>
+<div class="scroll"><table><thead><tr><th scope="col"><button type="button" data-column="0"
+data-direction="asc">Model <span aria-hidden="true">↕</span></button></th>{heading}</tr></thead>
+<tbody id="results">{table_body(rows)}</tbody></table></div>
+<p id="empty-results" hidden>No models match this size limit.</p>
 <p class="foot">Rates are micro-averaged over documents; F1 is the mean per-document score.
 An em dash means no gold identifiers were filled, not zero errors. Excluded fields:
 {esc(', '.join(manifest['scoring']['exclude']) or 'none')}.</p>
@@ -122,9 +149,7 @@ split: <code>{esc(manifest['split'])}</code>; <a href="{dataset_url}">dataset re
 Harness {__version__}; scorer {SCORER_VERSION}. Raw prediction files retain their original inference provenance.</p>
 <p><a href="scores.json">Scores and run provenance</a> · <a href="manifest.json">Dataset manifest</a> ·
 <a href="https://github.com/davanstrien/glam-extraction-benchmark">Code and raw predictions</a></p></details>
-</main><script>const body=document.getElementById('results');
-document.querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{{
-[...body.rows].sort((a,z)=>Number(a.dataset[b.dataset.sort])-Number(z.dataset[b.dataset.sort])).forEach(r=>body.append(r));}});
+</main><script>{table_script}
 fetch('example.json').then(r=>r.json()).then(x=>document.getElementById('gold').textContent=JSON.stringify(x,null,2));
 </script></body></html>'''
 
