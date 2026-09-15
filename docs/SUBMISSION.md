@@ -6,9 +6,21 @@ A file in `results/` is a submission: a model's raw predictions for every item i
 
 1. `model.label` MUST be the board name. One file per label, named `<label>.json`.
 2. `dataset.inference_revision` MUST be the 40-character commit sha of the snapshot read. A branch name is refused; the validator prints the sha to use.
-3. `items` MUST hold one row per `_sample_id` in that snapshot, each with `id` and `prediction` as a string: the model's raw output, JSON as text, unparsed.
+3. `items` MUST hold one row per benchmark `id` (legacy NLS `_sample_id`) in that snapshot, each with `id` and `prediction` as a string: the model's raw output, JSON as text, unparsed.
 4. `prediction` MAY be `null` only with `inference_status: "transport_error"` on that row.
-5. Nothing else is required.
+5. Config-based runs additionally require the identity fields below. Legacy NLS submissions retain their existing contract.
+
+## Config-based results
+
+For the common benchmark dataset, `dataset` must carry `id`, `inference_revision`,
+`config` and `split`. The harness derives these
+from the validated pinned manifest. The validator checks them against that config;
+the Space builder refuses absent or mismatched identities. Use `results/<config>/`.
+
+Do not relabel historical source-dataset runs as evaluations of the new export.
+Use `--legacy-results` when building the preview from the original NLS predictions;
+the page labels their earlier schema and retains their original provenance.
+See [Dataset workflow](DATASETS.md).
 
 ## Optional keys
 
@@ -57,4 +69,4 @@ A real submission carries every item in the snapshot. Snapshot sha: `HfApi().dat
 uv run glam_bench/validate_submission.py results/nls/my-extractor.json
 ```
 
-Exit 0 prints a summary. Exit 1 lists every problem. Ids are checked against the snapshot in `dataset.inference_revision`; `--dataset-revision main` checks another. Only the NLS gold has a loader; another dataset gets the shape checks and `ids not checked`. Put the file in `results/nls/` for the NLS gold set, `results/` otherwise. The board build runs the same checks.
+Exit 0 prints a summary. Exit 1 lists every problem. Ids are checked against the snapshot in `dataset.inference_revision`; `--dataset-revision main` checks another. The NLS source and common-contract configs have gold loaders. An unknown dataset without a config gets shape checks and `ids not checked`; this does not admit it to a config-based Space. Put the file in `results/nls/` for the NLS gold set, `results/` otherwise. The board build runs the same checks.

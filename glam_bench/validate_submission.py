@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = ["huggingface_hub"]
+# dependencies = ["huggingface_hub", "datasets>=5,<6", "jsonschema>=4,<5", "Pillow>=12,<13"]
 # ///
 """Check one submission against the contract before it is submitted or boarded.
 
@@ -16,6 +16,7 @@ from pathlib import Path
 
 import result_io
 from nls import NLS_DATASET, load_gold
+from dataset_contract import BENCHMARK_ID, evaluation_identity, load_hub_config
 
 
 def read_submission(path: Path) -> dict:
@@ -43,6 +44,15 @@ def snapshot_to_check(document: dict, requested: str | None) -> str:
 def gold_for(document: dict, requested: str | None) -> tuple[set | None, str, str | None]:
     """-> (gold ids or None, the snapshot the check ran against, a note to print or None)."""
     dataset = result_io.field_at(document, "dataset", "id") or NLS_DATASET
+    config = result_io.field_at(document, "dataset", "config")
+    if config or dataset == BENCHMARK_ID:
+        if not config:
+            raise SystemExit("benchmark submissions must name dataset.config")
+        rows, manifest, resolved = load_hub_config(dataset, config, snapshot_to_check(document, requested))
+        for key, expected in evaluation_identity(manifest).items():
+            if result_io.field_at(document, "dataset", key) != expected:
+                raise SystemExit(f"dataset.{key} differs from the selected benchmark config")
+        return {row["id"] for row in rows}, resolved, None
     if dataset == NLS_DATASET:
         _schema, gold, resolved = load_gold(snapshot_to_check(document, requested))
         return set(gold), resolved, None

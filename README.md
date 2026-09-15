@@ -1,15 +1,23 @@
 # glam-extraction-benchmark
 
+Working harness version: **0.0.1** (`uv run glam_bench/harness.py --version`).
+The default dataset is `small-models-for-glam/glam-extraction-benchmark`, config
+`nls-index-cards`, split `test`. See [Dataset workflow](docs/DATASETS.md) for export,
+validation, adding collections and building the static Space.
+
 Minimal benchmark for **structured extraction from GLAM documents** — index cards + registration
 forms. Given a card/form image **and a target JSON schema**, score how well a model extracts the
 fielded data, across models.
 
-> **Status: v1 on institution-verified gold.** The published board runs on
-> `NationalLibraryOfScotland/index-cards-eval` (public, CC0): 98 manuscript-catalogue index cards.
-> Labels were drafted by Qwen3.6-35B-A3B and checked by NLS cataloguers: 66 accepted as drafted,
-> 32 corrected. The original POC set (`--dataset` default) is 11
-> items with *silver* labels (NuExtract-3 zero-shot + one LLM reviewer agent) in a public HF
-> dataset; its scores stay illustrative.
+> **Status: experimental preview.** Ten models have been evaluated on both configs:
+> 98 NLS manuscript-catalogue cards and 30 Harvard botany cards. The leaderboard
+> offers separate dataset scores and an Overall F1 with equal dataset weighting.
+> Current runs use the nullable schemas; the 12 historical NLS runs are retained
+> separately for reference. The original 11-item POC dataset remains private.
+
+[Leaderboard](https://huggingface.co/spaces/small-models-for-glam/glam-extraction-benchmark) ·
+[Benchmark dataset](https://huggingface.co/datasets/small-models-for-glam/glam-extraction-benchmark) ·
+[Raw predictions](https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results)
 
 ## Why
 
@@ -21,10 +29,10 @@ within a few points of a 235B frontier API on real archival cards.
 ## Layout
 
 **Canonical schema = standard JSON Schema.** It's the lingua franca (OpenAI/Gemini structured
-outputs, vLLM `guided_json`, Pydantic, outlines), so each model's *solver* converts from it to its
-own dialect (NuExtract template, `guided_json`, a prompt, or a Pydantic model). A `{"x-match":"exact"}`
+outputs, vLLM structured outputs, Pydantic, outlines), so each model's *solver* converts from it to its
+own dialect (NuExtract template, `structured_outputs.json`, a prompt, or a Pydantic model). A `{"x-match":"exact"}`
 annotation marks verbatim/identifier fields for the scorer. Items carry `target_schema` (JSON Schema)
-plus a derived `target_schema_nuextract`.
+and `expected_output`; adapters derive their own schema dialect.
 
 | file | role |
 |---|---|
@@ -34,7 +42,9 @@ plus a derived `target_schema_nuextract`.
 | `glam_bench/result_io.py` | the result *file*: the **submission contract** (`validate_submission`), envelope shape, atomic writes, the three file states, the resume contract, and the publication gate every consumer discovers its input through |
 | `glam_bench/validate_submission.py` | check one submission against that contract before sending it — the same checks the board runs |
 | `glam_bench/models.py` | model registry (labels, kinds, ids — **no endpoints**), typed-core item list, POC dataset id |
-| `glam_bench/nls.py` | NLS gold loader: dereferences the paratext schema, overlays `x-match:"exact"` on identifiers, pins a commit |
+| `glam_bench/dataset_contract.py` | generic config loading, schema/gold validation and evaluation identity |
+| `glam_bench/build_space.py` | static Space build from a pinned config and cached predictions; performs no inference |
+| `glam_bench/nls.py` | legacy NLS gold loader: dereferences the paratext schema, overlays `x-match:"exact"` on identifiers, pins a commit |
 | `glam_bench/rescore.py` | rescore cached predictions against the current gold + scorer; prints drift vs the stored scores |
 | `glam_bench/board.py` | the **two-axis board** (identifiers wrong / invented fields vs fields left blank), micro-averaged — the numbers on the page |
 | `glam_bench/site_nls.py` | builds `site/index.html` — the published board — from those numbers |
@@ -45,46 +55,40 @@ plus a derived `target_schema_nuextract`.
 
 A file in `results/` is a submission: a `model.label`, the commit sha of the gold snapshot
 (`dataset.inference_revision`), and one row per item with the model's raw output as a string.
-Nothing else is required. The board rescores every submission from those predictions; the harness
+Config-based submissions also identify config and split. The board rescores every submission from those predictions; the harness
 below is the reference producer, but any tool or script may produce the same shape.
 
 Contract, optional keys and example: **[`docs/SUBMISSION.md`](docs/SUBMISSION.md)**.
 
 ```bash
-uv run glam_bench/validate_submission.py results/nls/my-extractor.json
+uv run glam_bench/validate_submission.py results/nls-index-cards/my-extractor.json
 ```
 
-Exit 0 prints a summary; exit 1 lists every problem. The file goes in `results/nls/` for the NLS
-gold set (`results/` otherwise), named `<model.label>.json`.
+Exit 0 prints a summary; exit 1 lists every problem. New config results go in `results/<config>/`, named `<model.label>.json`. Historical NLS
+runs remain in `results/nls/`. Generated results are ignored until deliberately submitted.
 
 Harness-written files board as attested. Everything else boards as self-reported, marked `†`.
 The validator checks shape, ids and snapshot; it cannot check which model ran.
 
 ## Run a model
 
-How the harness produces a submission, end to end, for a model not on Inference Providers
-(`lift-9B` here; `GLM-OCR` is in the registry but disabled, see `models.py` for why).
-`HF_TOKEN` is needed throughout: it reads the dataset and is the API key a Jobs serve expects.
+How the optional reference runner produces a submission using an OpenAI-compatible
+endpoint (`lift-9B` here). `HF_TOKEN` reads the private benchmark dataset; endpoint
+authentication depends on your hosting setup.
 
-### 1. Serve it on Jobs
+### 1. Choose an inference endpoint
 
-```bash
-hf jobs run --detach --expose 8000 --flavor a100-large -s HF_TOKEN \
-  vllm/vllm-openai vllm serve datalab-to/lift --max-model-len 32768
-```
-
-Flavor by model size: up to ~8B `a10g-large`, 9–30B `a100-large`, larger see `hf jobs hardware`.
-Keep `--max-model-len` at 16384–32768 when sending images; the 8192 default truncates. The job
-is ready when `hf jobs logs -f <namespace>/<job-id>` shows `Application startup complete` (logs
-are empty while it is still scheduling; `hf jobs inspect` shows the state). The job exposes
-`https://<job-id>--8000.hf.jobs`; the OpenAI base URL is that + `/v1`. It bills per minute until
-cancelled.
+The reference runner accepts an OpenAI-compatible endpoint via `--base-url`, or
+uses HF Inference Providers for a router model. Hosting is your choice.
+[Optional inference recipes](examples/inference/README.md) record our setup;
+the [HF Jobs example](examples/inference/hf-jobs.md) is one way to serve a model.
+Jobs and bucket access are not required to produce or validate a submission.
 
 ### 2. Smoke-test two items
 
 ```bash
-uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
-  --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1 --limit 2
+uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
+  --base-url lift-9B=https://your-endpoint.example/v1 --limit 2
 ```
 
 Read the two predictions before paying for 98. `--limit` writes `lift-9B.limit2.json`, never the
@@ -93,8 +97,8 @@ canonical name.
 ### 3. Run it
 
 ```bash
-uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
-  --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1
+uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
+  --base-url lift-9B=https://your-endpoint.example/v1
 ```
 
 - `--models` is required: registry labels, or `all` for every enabled entry.
@@ -104,14 +108,15 @@ uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
 - `--provider LABEL=NAME` pins the Inference Providers provider. Left off, the router chooses and
   never says.
 - `--no-thinking` sets `chat_template_kwargs.enable_thinking=false` for reasoning models.
-- `--max-tokens 1600` for `nls`; the 900 default truncates the entry lists.
+- `--max-tokens 1600` for `nls-index-cards`; the 900 default truncates the entry lists.
 
 Everything is resolved before the dataset loads, and the run prints how it will reach every model
 before the first paid request.
 
 ### 4. What lands on disk
 
-`--dataset nls` writes to `results/nls/`, everything else to `results/`.
+The default NLS config writes to `results/nls-index-cards/`; other configs use
+`results/<config>/`. Explicit `--dataset nls` retains the historical `results/nls/` path.
 
 | file | means |
 |---|---|
@@ -125,12 +130,12 @@ costs one row.
 ### 5. Recover a run
 
 ```bash
-uv run glam_bench/harness.py --models lift-9B --dataset nls --max-tokens 1600 \
-  --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1 --resume
+uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
+  --base-url lift-9B=https://your-endpoint.example/v1 --resume
 ```
 
 `--resume` continues the `.partial` if there is one, otherwise the `.json`. It refuses a file from
-a different dataset snapshot, item slice, model, or generation setting (`--max-tokens`,
+a different dataset snapshot, config, item slice, model, or generation setting (`--max-tokens`,
 `--no-thinking`). The transport is not part of that identity, so `--resume` with `--base-url`
 moves the failed rows onto a pinned serve; each row records which transport answered.
 
@@ -139,13 +144,17 @@ missing rows), `unparseable` (those plus rows the scorer could not parse), `all`
 
 ### 6. Rescore and build the board
 
+For the config-based Space, use the pinned build in [Dataset workflow](docs/DATASETS.md).
+The following commands retain the historical NLS loader and page:
+
 ```bash
 uv run glam_bench/rescore.py           # drift vs the stored scores; --write to persist
 uv run glam_bench/board.py             # the two-axis board
 uv run glam_bench/site_nls.py          # writes site/index.html
 ```
 
-Predictions are stored, so a scorer, schema or gold change is a rescore, not a rerun. `board.py`
+Stored predictions can be rescored after a scorer or gold change. A changed input schema
+or prompt requires a new run to measure its effect on model output. `board.py`
 is what the page quotes: micro-averaged rates, `notes` field excluded. `rescore.py --write`
 rewrites atomically, records `scoring.gold_revision`, and never drops a row (a prediction with no
 gold row is kept, zeroed, and marked `scorer_error: "no gold for id"`).
@@ -153,7 +162,7 @@ gold row is kept, zeroed, and marked `scorer_error: "no gold for id"`).
 ### Result file format
 
 Format version 2. The envelope says what was asked; every row says how the answer was obtained.
-Abbreviated example with placeholders and rows omitted, so not itself a valid submission; the
+Historical NLS example with placeholders and rows omitted, so not itself a valid submission; the
 complete recorded run is `results/nls/lift-9B.json`.
 
 ```json
@@ -170,7 +179,7 @@ complete recorded run is `results/nls/lift-9B.json`.
  "produced_by": {"producer": "harness", "attested": true},
  "items": [{"id": "Allan-W.-Anderson-D.__0221", "prediction": "{\"image_type\": ...}",
             "inference_status": "ok", "attempts": 1, "content_f1": 0.7414, "schema_valid": 1.0,
-            "provenance": {"served_by": "openai-compatible", "endpoint": "https://<job-id>--8000.hf.jobs/v1",
+            "provenance": {"served_by": "openai-compatible", "endpoint": "https://your-endpoint.example/v1",
                            "endpoint_attested": true, "model_revision_hub_main": "<sha>", "timestamp": "...Z",
                            "latency_s": 2.625, "retry_wait_s": 0.0, "max_tokens": 1600, "temperature": 0,
                            "request_options": {}, "thinking_disabled": false,
@@ -245,8 +254,14 @@ hf jobs cancel <namespace>/<job-id>
   every label reviewed by NLS cataloguers: 66 `verified` (accepted as drafted) and 32 `corrected`
   (edited by a reviewer). The drafts came from Qwen3.6-35B-A3B, so the two subsets are reported
   separately; whether that gives its relatives an advantage is not something this split measures.
-  Run it with `--dataset nls`.
-- `davanstrien/glam-extraction-bench-poc` (public) — the original POC. 11 items: `image ·
+  The new config is the default; `--dataset nls` explicitly uses the historical loader.
+- `harvard-botany-headers` — 30 curated cards from Harvard Botany Libraries via
+  `biglam/index-cards-harvard-botany-metropolitan-flora`. Extract printed taxon name,
+  authority and explicit handwritten taxon corrections. Printed fields and both
+  correction strings were human-reviewed; correction absence was assistant-audited.
+  Five unsupported cards are retained in an unscored review split. The source reports
+  public-domain status; preserve Harvard attribution. See [config details](docs/DATASETS.md).
+- `davanstrien/glam-extraction-bench-poc` (private) — the original POC. 11 items: `image ·
   target_schema · silver_gold · item_quality · uncertain_fields · …`. Typed core (forms ×2, BPL ×2,
   Rubenstein, Peabody, Parisian) is good/usable; handwritten + multi-card items are deferred.
 
@@ -258,9 +273,9 @@ curl "https://huggingface.co/api/models?inference_provider=all&pipeline_tag=imag
 
 ## Roadmap
 
-- [ ] More collections beyond NLS (LoC, BPL, Smithsonian); more document types beyond cards + forms
+- [ ] More collections beyond NLS and Harvard (LoC, BPL, Smithsonian); more document types beyond cards + forms
 - [ ] Human-verify the POC silver gold → gold (2nd/3rd review)
-- [ ] Confirm the 5 `other`-tagged source licenses in the (already public) POC dataset
+- [ ] Confirm the 5 `other`-tagged source licenses before publishing the private POC dataset
 - [ ] Inspect-AI scorer wrapper and a custom `evaluation_framework` registration (needs HF allow-list) for an HF "verified" path
 - [ ] Cost/latency columns pulled from the router; per-card-type sub-leaderboards; a constrained-decoding track
 
@@ -271,3 +286,9 @@ On the POC set, silver gold is NuExtract-seeded → NuExtract is advantaged, and
 reviewed by NLS cataloguers; the 66 `verified` and 32 `corrected` rows are reported separately
 because of that drafting step, and any advantage to the drafting model's relatives is unverified. Some models tagged multimodal fail to serve images via
 their provider — the harness records this rather than hiding it.
+
+## Licence
+
+Code and documentation are available under the [MIT licence](LICENSE). Dataset
+images, annotations and source-derived result content retain their applicable
+source licences and attribution; see [Data](#data) and the dataset card.
