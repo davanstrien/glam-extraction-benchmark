@@ -24,6 +24,7 @@ RUN_ID = "2026-09-15-nullable-v1"
 REVISION = "ecc9c02582f933ca89b73e6751e4ed76888cb24d"
 DATASET = "small-models-for-glam/glam-extraction-benchmark"
 IMAGE = "vllm/vllm-openai:v0.29.0"
+HARDWARE_USD_PER_HOUR = {"l40sx1": 1.80, "l4x1": 0.80, "a10g-small": 1.00}
 MODELS = {
     "Qwen3.5-2B": ("Qwen/Qwen3.5-2B", "15852e8c16360a2fea060d615a32b45270f8a8fc", "2.274B"),
     "Qwen3.5-4B": ("Qwen/Qwen3.5-4B", "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a", "4.660B"),
@@ -155,15 +156,15 @@ def worker(args):
         "params": params,
         "base_url": "http://127.0.0.1:8000/v1",
         "request_options": options,
-        "cost": "HF Jobs L40S $1.80/hour",
+        "cost": f"HF Jobs {args.flavor} ${HARDWARE_USD_PER_HOUR[args.flavor]:.2f}/hour",
     }
     meta = {
         "run_id": args.run_id,
         "model": model_id,
         "model_revision": revision,
         "image": IMAGE,
-        "hardware": "l40sx1",
-        "hourly_usd": 1.8,
+        "hardware": args.flavor,
+        "hourly_usd": HARDWARE_USD_PER_HOUR[args.flavor],
         "job_id": job_id,
         "namespace": NAMESPACE,
         "server_command": command,
@@ -215,7 +216,7 @@ def worker(args):
                 {
                     "loaded_model_revision": revision,
                     "prompt_recipe": prompt_recipe,
-                    "hardware": "l40sx1",
+                    "hardware": args.flavor,
                     "usage": response.usage.model_dump() if response.usage else None,
                 }
             )
@@ -261,7 +262,8 @@ def launch(args):
             archive.add(path, arcname=str(path.relative_to(root)))
         archive.add(__file__, arcname="examples/inference/jobs_batch.py")
     source = f"nls-index-cards/{args.run_id}/recipes/jobs-source.tar.gz"
-    api.batch_bucket_files(BUCKET, add=[(buffer.getvalue(), source)])
+    if not args.reuse_source:
+        api.batch_bucket_files(BUCKET, add=[(buffer.getvalue(), source)])
     bootstrap = (
         "from huggingface_hub import HfApi; import tarfile,os; "
         f"HfApi().download_bucket_files({BUCKET!r},[({source!r},'/tmp/recipe.tar.gz')],raise_on_missing_files=True); "
@@ -272,26 +274,28 @@ def launch(args):
     command = [
         "bash",
         "-lc",
-        "python -m pip install 'huggingface_hub==1.31.0' 'datasets>=5,<6' 'jsonschema>=4,<5' && python -c "
+        "uv pip install --system 'huggingface_hub==1.31.0' 'datasets>=5,<6' 'jsonschema>=4,<5' && python3 -c "
         + shlex.quote(bootstrap)
-        + ' && python /tmp/glam/examples/inference/jobs_batch.py worker --model "$MODEL_LABEL" --run-id "$RUN_ID"'
+        + ' && python3 /tmp/glam/examples/inference/jobs_batch.py worker --model "$MODEL_LABEL" --run-id "$RUN_ID"'
         + (f" --limit {args.limit}" if args.limit else ""),
     ]
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    job_label = args.model.replace(".", "-")
     job = api.run_job(
         image=IMAGE,
         command=command,
         namespace=NAMESPACE,
-        flavor="l40sx1",
+        flavor=args.flavor,
         timeout="60m",
-        name=f"glam-nls-{args.model.lower()}",
-        labels={"benchmark": "glam", "run": args.run_id, "model": args.model},
+        name=f"glam-nls-{job_label.lower()}",
+        labels={"benchmark": "glam", "run": args.run_id, "model": job_label},
         env={
             "MODEL_LABEL": args.model,
             "RUN_ID": args.run_id,
             "HARNESS_GIT_SHA": sha,
             "PYTHONUNBUFFERED": "1",
             "GLAM_JOBS_NAMESPACE": NAMESPACE,
+            "JOB_FLAVOR": args.flavor,
         },
         secrets={"HF_TOKEN": get_token()},
     )
@@ -301,7 +305,8 @@ def launch(args):
         "model": args.model,
         "image": IMAGE,
         "timeout_minutes": 60,
-        "maximum_compute_usd": 1.80,
+        "hardware": args.flavor,
+        "maximum_compute_usd": HARDWARE_USD_PER_HOUR[args.flavor],
         "run_id": args.run_id,
         "url": f"https://huggingface.co/jobs/{NAMESPACE}/{job.id}",
     }
@@ -320,6 +325,14 @@ def main():
     parser.add_argument("--model", required=True, choices=MODELS)
     parser.add_argument("--run-id", default=RUN_ID)
     parser.add_argument("--limit", type=int)
+    parser.add_argument(
+        "--reuse-source",
+        action="store_true",
+        help="Launch from the runtime bundle already staged for this run ID",
+    )
+    parser.add_argument(
+        "--flavor", choices=HARDWARE_USD_PER_HOUR, default=os.environ.get("JOB_FLAVOR", "l40sx1")
+    )
     args = parser.parse_args()
     (launch if args.action == "launch" else worker)(args)
 

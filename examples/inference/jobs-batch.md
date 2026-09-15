@@ -12,15 +12,15 @@ From the repository root, with an HF token that can run Jobs and write to the re
 
 ```bash
 GLAM_JOBS_NAMESPACE=davanstrien uv run --with huggingface_hub==1.31.0 \
-  examples/inference/jobs_batch.py launch --model Qwen3.5-2B
+  examples/inference/jobs_batch.py launch --model Qwen3.5-2B --flavor l4x1
 ```
 
-Start with this model, check its logs and first three predictions, then launch
-other labels from `--help`. Each job has a 60-minute timeout on `l40sx1` ($1.80/hour
-at the 2026-09-15 price). Six such jobs allocate at most $10.80 before retries; the
-Jobs batch allocation is $15. Check the remaining budget before retrying. The
-namespace is explicit. Output storage stays
-in the organization bucket regardless of billing namespace.
+Check the first three predictions, then launch other labels from `--help` with
+`--reuse-source` to use the existing runtime bundle. Hardware options are
+`l40sx1` ($1.80/hour), `l4x1` ($0.80/hour), and `a10g-small` ($1.00/hour),
+using prices checked on 2026-09-15. Each Job has a 60-minute timeout and exits
+when its model finishes. The September batch used L4 for 2B and L40S for the
+other five models, within a $15 allocation. Outputs stay in the organization bucket.
 
 The worker checks its first three responses for parse failures and truncation
 before continuing through the remaining cards. Low extraction scores themselves
@@ -49,7 +49,9 @@ publish that as a completed run.
 
 For execution, the launcher stages the seven required Python modules (`harness`,
 `result_io`, `dataset_contract`, `schema`, `scorer`, `models`, `version`) plus this
-recipe under `recipes/jobs-source.tar.gz`. No data, results, environment files,
+recipe under `recipes/jobs-source.tar.gz`. `--reuse-source` uses that existing
+bundle for later models in the same run. The container uses its installed
+`python3` and `uv`. No data, results, environment files,
 credentials, git history or private notes are included. HF credentials are passed
 as a Jobs secret. The token needs write access to the private bucket and access to run Jobs in the selected namespace.
 
@@ -59,12 +61,10 @@ predictions. Use another run ID for future reruns to retain earlier outputs.
 
 ## Status on 2026-09-15
 
-No model runs have completed with this recipe yet.
-
-Ruff, Python compilation, CLI help, all six prompt builders against the pinned
-local export, and malformed/truncated smoke-stop checks passed. GPU serving and
-end-to-end bucket checkpointing remain unverified; these notes do not claim a
-successful model run.
+Ruff, compilation, CLI help, prompt checks against the pinned export, real GPU
+smoke runs, and per-card bucket checkpointing have been exercised. Completed
+submissions are validated against all 98 pinned IDs. See
+[September run results](jobs-2026-09-15.md) for outcomes and runtime evidence.
 
 Model-specific sources:
 
