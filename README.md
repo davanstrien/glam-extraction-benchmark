@@ -8,6 +8,18 @@ scored against reviewed reference data.
 [Dataset](https://huggingface.co/datasets/small-models-for-glam/glam-extraction-benchmark) ·
 [Raw predictions](https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results)
 
+## Why this benchmark?
+
+GLAM teams need to turn varied collection documents into usable catalogue data,
+with accurate identifiers and fields that staff can trust or review. Model choice
+also depends on available hardware, budget and whether documents can be sent to
+an external API.
+
+The goal is to test how far small, locally runnable models can go on these tasks,
+compare them with larger models, and make their errors visible. We start with two
+collections and aim to make it easy for institutions to contribute reviewed
+examples and schemas, giving model builders concrete GLAM tasks to improve on.
+
 **Experimental preview:** ten models evaluated on both datasets below.
 The linked assets currently require access.
 
