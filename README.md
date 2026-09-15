@@ -69,29 +69,23 @@ The validator checks shape, ids and snapshot; it cannot check which model ran.
 
 ## Run a model
 
-How the harness produces a submission, end to end, for a model not on Inference Providers
-(`lift-9B` here; `GLM-OCR` is in the registry but disabled, see `models.py` for why).
-`HF_TOKEN` is needed throughout: it reads the dataset and is the API key a Jobs serve expects.
+How the optional reference runner produces a submission using an OpenAI-compatible
+endpoint (`lift-9B` here). `HF_TOKEN` reads the private benchmark dataset; endpoint
+authentication depends on your hosting setup.
 
-### 1. Serve it on Jobs
+### 1. Choose an inference endpoint
 
-```bash
-hf jobs run --detach --expose 8000 --flavor a100-large -s HF_TOKEN \
-  vllm/vllm-openai vllm serve datalab-to/lift --max-model-len 32768
-```
-
-Flavor by model size: up to ~8B `a10g-large`, 9–30B `a100-large`, larger see `hf jobs hardware`.
-Keep `--max-model-len` at 16384–32768 when sending images; the 8192 default truncates. The job
-is ready when `hf jobs logs -f <namespace>/<job-id>` shows `Application startup complete` (logs
-are empty while it is still scheduling; `hf jobs inspect` shows the state). The job exposes
-`https://<job-id>--8000.hf.jobs`; the OpenAI base URL is that + `/v1`. It bills per minute until
-cancelled.
+The reference runner accepts an OpenAI-compatible endpoint via `--base-url`, or
+uses HF Inference Providers for a router model. Hosting is your choice.
+[Optional inference recipes](examples/inference/README.md) record our setup;
+the [HF Jobs example](examples/inference/hf-jobs.md) is one way to serve a model.
+Jobs and bucket access are not required to produce or validate a submission.
 
 ### 2. Smoke-test two items
 
 ```bash
 uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
-  --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1 --limit 2
+  --base-url lift-9B=https://your-endpoint.example/v1 --limit 2
 ```
 
 Read the two predictions before paying for 98. `--limit` writes `lift-9B.limit2.json`, never the
@@ -101,7 +95,7 @@ canonical name.
 
 ```bash
 uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
-  --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1
+  --base-url lift-9B=https://your-endpoint.example/v1
 ```
 
 - `--models` is required: registry labels, or `all` for every enabled entry.
@@ -134,7 +128,7 @@ costs one row.
 
 ```bash
 uv run glam_bench/harness.py --models lift-9B --config nls-index-cards --max-tokens 1600 \
-  --base-url lift-9B=https://<job-id>--8000.hf.jobs/v1 --resume
+  --base-url lift-9B=https://your-endpoint.example/v1 --resume
 ```
 
 `--resume` continues the `.partial` if there is one, otherwise the `.json`. It refuses a file from
@@ -182,7 +176,7 @@ complete recorded run is `results/nls/lift-9B.json`.
  "produced_by": {"producer": "harness", "attested": true},
  "items": [{"id": "Allan-W.-Anderson-D.__0221", "prediction": "{\"image_type\": ...}",
             "inference_status": "ok", "attempts": 1, "content_f1": 0.7414, "schema_valid": 1.0,
-            "provenance": {"served_by": "openai-compatible", "endpoint": "https://<job-id>--8000.hf.jobs/v1",
+            "provenance": {"served_by": "openai-compatible", "endpoint": "https://your-endpoint.example/v1",
                            "endpoint_attested": true, "model_revision_hub_main": "<sha>", "timestamp": "...Z",
                            "latency_s": 2.625, "retry_wait_s": 0.0, "max_tokens": 1600, "temperature": 0,
                            "request_options": {}, "thinking_disabled": false,
