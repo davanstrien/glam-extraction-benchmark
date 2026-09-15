@@ -10,10 +10,10 @@ scored against reviewed reference data.
 
 ## Why this benchmark?
 
-GLAM teams need to turn varied collection documents into usable catalogue data,
-with accurate identifiers and fields that staff can trust or review. Model choice
-also depends on available hardware, budget and whether documents can be sent to
-an external API.
+GLAM tasks are underrepresented in model benchmarks, including the common task of
+turning collection documents into structured catalogue metadata. Teams need accurate
+identifiers and fields that staff can trust or review, while model choice also
+depends on hardware, budget and whether documents can be sent to an external API.
 
 The goal is to test how far small, locally runnable models can go on these tasks,
 compare them with larger models, and make their errors visible. We start with two
