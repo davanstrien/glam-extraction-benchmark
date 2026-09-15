@@ -91,9 +91,9 @@ def test_collection_pages_keep_config_identity_and_relative_navigation(tmp_path)
     assert [x["benchmark"]["revision"] for x in artifacts] == ["a" * 40, "c" * 40]
     main = (output / "index.html").read_text()
     nested = (output / "botany-headers/index.html").read_text()
-    assert '<option value="botany-headers/index.html">botany-headers</option>' in main
-    assert '<option value="../index.html">museum-objects</option>' in nested
-    assert '<option value="../botany-headers/index.html" selected>' in nested
+    assert '<option data-config="botany-headers" value="botany-headers/index.html">botany-headers</option>' in main
+    assert '<option data-config="museum-objects" value="../index.html">museum-objects</option>' in nested
+    assert '<option data-config="botany-headers" value="../botany-headers/index.html" selected>' in nested
     assert "Replacement strings human reviewed" in nested
     assert (output / "botany-headers/example.jpg").is_file()
     assert len(json.loads((output / "configs.json").read_text())) == 2
@@ -101,6 +101,6 @@ def test_collection_pages_keep_config_identity_and_relative_navigation(tmp_path)
     overall = json.loads((output / "overall-scores.json").read_text())
     assert overall["aggregation"]["dataset_weights"] == {"museum-objects": .5, "botany-headers": .5}
     assert overall["rows"][0]["content_f1"] == 1
-    assert '<option value="overall.html">Overall</option>' in main
-    assert '<option value="../overall.html">Overall</option>' in nested
+    assert '<option data-config="overall" value="overall.html">Overall</option>' in main
+    assert '<option data-config="overall" value="../overall.html">Overall</option>' in nested
     assert 'data-f1-column="1"' in (output / "overall.html").read_text()

@@ -46,6 +46,41 @@ function filterSize(limit) {
   sizeButtons.forEach(button => button.setAttribute('aria-pressed', String(button.dataset.maxParams === limit)));
   drawSizePlot([...body.rows]);
 }
-sizeButtons.forEach(button => button.onclick = () => filterSize(button.dataset.maxParams));
+// Keep shareable state in the URL, including when embedded on the Hub.
+const datasetSelect = document.getElementById('dataset');
+function syncUrl(limit) {
+  const url = new URL(window.location.href);
+  if (limit === 'all') url.searchParams.delete('max_params');
+  else url.searchParams.set('max_params', limit);
+  url.searchParams.set('dataset', datasetSelect.selectedOptions[0].dataset.config);
+  window.history.replaceState(null, '', url);
+  window.parent.postMessage({queryString: url.search}, 'https://huggingface.co');
+}
+function navigateDataset(option, replace = false) {
+  const url = new URL(option.value, window.location.href);
+  url.search = window.location.search;
+  url.searchParams.set('dataset', option.dataset.config);
+  url.hash = window.location.hash;
+  if (replace) window.location.replace(url);
+  else window.location.assign(url);
+}
+datasetSelect.addEventListener('change', () => navigateDataset(datasetSelect.selectedOptions[0]));
+sizeButtons.forEach(button => button.onclick = () => {
+  filterSize(button.dataset.maxParams);
+  syncUrl(button.dataset.maxParams);
+});
+function restoreUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const requested = [...datasetSelect.options].find(option => option.dataset.config === params.get('dataset'));
+  if (requested && !requested.selected) {
+    navigateDataset(requested, true);
+    return;
+  }
+  const value = params.get('max_params');
+  const limit = sizeButtons.some(button => button.dataset.maxParams === value) ? value : 'all';
+  filterSize(limit);
+  syncUrl(limit);
+}
+window.addEventListener('popstate', restoreUrl);
 sortRows();
-filterSize('all');
+restoreUrl();

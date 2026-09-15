@@ -14,7 +14,7 @@ def overall_page(aggregate, navigation):
                    f'Each dataset has equal weight ({100 / len(configs):g}% each).' if weighting == 'datasets' else
                    'Every document contributes equally: dataset F1 scores are weighted by '
                    'their number of evaluated documents.')
-    options = ''.join(f'<option value="{esc(x["url"], quote=True)}"'
+    options = ''.join(f'<option data-config="{esc(x["config"], quote=True)}" value="{esc(x["url"], quote=True)}"'
                       + (' selected' if x['config'] == 'overall' else '')
                       + f'>{esc(x.get("label", x["config"]))}</option>' for x in navigation)
     sizes = '<button type="button" data-max-params="all" aria-pressed="true">All</button>'
@@ -60,5 +60,4 @@ revisions are recorded in <a href="overall-scores.json">the score download</a>.<
 <a href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p>
 <p>The overall view combines the selected dataset results; it does not create a new dataset or change individual scores.</p>
 </details></main><script>{plot_script}\n{table_script}
-document.getElementById('dataset').addEventListener('change',e=>window.location.assign(e.target.value));
 </script></body></html>'''

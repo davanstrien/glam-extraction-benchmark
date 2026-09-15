@@ -122,7 +122,7 @@ def page(manifest, revision, rows, legacy, navigation=None):
                              f"Corrections: {labels.get('corrections', 'see manifest')}.")
     choices = navigation or [{"config": manifest["config"], "url": "index.html"}]
     options = "".join(
-        f'<option value="{esc(choice["url"], quote=True)}"'
+        f'<option data-config="{esc(choice["config"], quote=True)}" value="{esc(choice["url"], quote=True)}"'
         + (' selected' if choice["config"] == manifest["config"] else '')
         + f'>{esc(choice.get("label", choice["config"]))}</option>' for choice in choices)
     heading = "".join(
@@ -179,7 +179,6 @@ Harness {__version__}; scorer {SCORER_VERSION}. Raw prediction files retain thei
 <a href="https://huggingface.co/buckets/small-models-for-glam/glam-extraction-results">Raw predictions</a></p></details>
 </main><script>{plot_script}
 {table_script}
-document.getElementById('dataset').addEventListener('change',e=>window.location.assign(e.target.value));
 fetch('example.json').then(r=>r.json()).then(x=>document.getElementById('gold').textContent=JSON.stringify(x,null,2));
 </script></body></html>'''
 
