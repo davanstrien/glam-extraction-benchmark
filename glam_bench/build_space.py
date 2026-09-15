@@ -75,11 +75,11 @@ def parameter_billions(value):
     return float(match[1]) / (1000 if match[2].upper() == "M" else 1)
 
 
-def table_body(rows):
+def table_body(rows, metrics=METRICS):
     parts = []
     for row in rows:
         cells = []
-        for key in METRICS:
+        for key in metrics:
             value = row[key]
             display = f"{value * 100:.1f}" + ("" if key == "content_f1" else "%")
             if key == "identifiers_wrong" and not row["n_ident_filled"]:
@@ -97,6 +97,11 @@ def table_body(rows):
                      f'<td data-value="{label}">{name} <small>{size}</small></td>'
                      + "".join(cells) + "</tr>")
     return "\n".join(parts)
+
+
+def load_styles():
+    site = Path(__file__).resolve().parent.parent / "site"
+    return (site / "base.css").read_text() + "\n" + (site / "benchmark-layout.css").read_text()
 
 
 def page(manifest, revision, rows, legacy, navigation=None):
@@ -119,7 +124,7 @@ def page(manifest, revision, rows, legacy, navigation=None):
     options = "".join(
         f'<option value="{esc(choice["url"], quote=True)}"'
         + (' selected' if choice["config"] == manifest["config"] else '')
-        + f'>{esc(choice["config"])}</option>' for choice in choices)
+        + f'>{esc(choice.get("label", choice["config"]))}</option>' for choice in choices)
     heading = "".join(
         f'<th class="r" scope="col"><button type="button" data-column="{index}" '
         f'data-direction="{"desc" if meta["direction"] == "higher" else "asc"}">'
@@ -133,36 +138,10 @@ def page(manifest, revision, rows, legacy, navigation=None):
                          f'{disabled}>&lt;{limit}B</button>')
     table_script = (Path(__file__).resolve().parent.parent / "site/benchmark-table.js").read_text()
     plot_script = (Path(__file__).resolve().parent.parent / "site/benchmark-plot.js").read_text()
-    css = (Path(__file__).resolve().parent.parent / "site/base.css").read_text()
+    css = load_styles()
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>GLAM extraction benchmark</title>
-<style>{css}
-.wrap{{max-width:1080px}}.notice{{border-left:3px solid #8b6c36;padding:8px 16px;background:#faf8f2}}
-small{{color:#666}}button,select{{font:inherit;margin:0 12px 14px 0}}.scroll{{overflow-x:auto}}
-th button{{margin:0;padding:6px 0;border:0;background:transparent;color:inherit;
-font:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;text-align:inherit}}
-th button:hover{{color:var(--ink)}}th button:focus-visible{{outline:2px solid #3566a3;outline-offset:4px}}
-.size-bar{{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:14px 0;
-border-top:1px solid var(--line);margin-top:20px}}
-.size-options{{display:flex;align-items:center;gap:6px;overflow-x:auto;max-width:100%}}
-.size-options button{{margin:0;border:0;border-radius:14px;padding:4px 10px;background:transparent;
-color:var(--muted);font-size:14px;white-space:nowrap;cursor:pointer}}
-.size-options button[aria-pressed="true"]{{background:var(--ink);color:#fff}}
-.size-options button:hover:not(:disabled):not([aria-pressed="true"]){{background:#f1f2f4;color:var(--ink)}}
-.size-options button:disabled{{color:#9ca3af;cursor:default}}
-.size-options button:focus-visible{{outline:2px solid #3566a3;outline-offset:2px}}
-.size-label,#model-count{{font-size:13px;color:var(--muted);white-space:nowrap}}
-#model-count{{margin-left:auto}}
-.filter-note{{font-size:13px;color:var(--muted);margin:0 0 18px}}[hidden]{{display:none!important}}
-.plot-section{{margin-top:30px}}.plot-section h2{{font-size:18px;margin-bottom:6px}}
-.plot-section p{{font-size:13px;color:var(--muted)}}#size-plot{{width:100%;height:auto;display:block}}
-.plot-grid{{stroke:var(--line);stroke-width:1}}.plot-tick,.plot-axis{{font-size:11px;fill:var(--muted)}}
-.plot-frontier{{fill:none;stroke:#286c66;stroke-width:2;stroke-dasharray:5 4;opacity:.7}}
-.plot-point{{fill:#a3aab4;stroke:white;stroke-width:1.5}}.frontier-point{{fill:#286c66}}
-#size-plot a:hover .plot-point,#size-plot a:focus .plot-point{{stroke:var(--ink);stroke-width:3}}
-.plot-label{{font-size:11px;fill:var(--ink);pointer-events:none}}
-details{{margin-top:24px}}img{{max-width:100%;max-height:440px}}pre{{white-space:pre-wrap;font-size:12px}}
-</style></head><body><main class="wrap">
+<style>{css}</style></head><body><main class="wrap">
 <h1>GLAM extraction benchmark</h1><p>{esc(manifest["title"])}</p>
 <label for="dataset">Dataset </label><select id="dataset">{options}</select>
 <p class="sub">{manifest["item_count"]} documents · {len(rows)} models · {esc(manifest["institution"]["name"])}</p>

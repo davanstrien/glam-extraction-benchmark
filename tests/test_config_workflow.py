@@ -42,7 +42,7 @@ def test_static_build_scores_another_collection_without_inference(tmp_path):
     root, rows, manifest = collection(tmp_path)
     results = tmp_path / "results"
     results.mkdir()
-    document = {"model": {"label": "example", "params": "1B"},
+    document = {"model": {"id": "org/example", "label": "example", "params": "1B"},
                 "dataset": {"id": BENCHMARK_ID, "config": "museum-objects", "split": "test",
                             "inference_revision": "a" * 40},
                 "items": [{"id": "one", "prediction": rows[0]["expected_output"]}]}
@@ -65,7 +65,7 @@ def test_collection_pages_keep_config_identity_and_relative_navigation(tmp_path)
     root, rows, _manifest = collection(tmp_path)
     results = tmp_path / "results"
     results.mkdir()
-    document = {"model": {"label": "example", "params": "1B"},
+    document = {"model": {"id": "org/example", "label": "example", "params": "1B"},
                 "dataset": {"id": BENCHMARK_ID, "config": "museum-objects", "split": "test",
                             "inference_revision": "a" * 40},
                 "items": [{"id": "one", "prediction": rows[0]["expected_output"]}]}
@@ -97,3 +97,10 @@ def test_collection_pages_keep_config_identity_and_relative_navigation(tmp_path)
     assert "Replacement strings human reviewed" in nested
     assert (output / "botany-headers/example.jpg").is_file()
     assert len(json.loads((output / "configs.json").read_text())) == 2
+
+    overall = json.loads((output / "overall-scores.json").read_text())
+    assert overall["aggregation"]["dataset_weights"] == {"museum-objects": .5, "botany-headers": .5}
+    assert overall["rows"][0]["content_f1"] == 1
+    assert '<option value="overall.html">Overall</option>' in main
+    assert '<option value="../overall.html">Overall</option>' in nested
+    assert 'data-f1-column="1"' in (output / "overall.html").read_text()

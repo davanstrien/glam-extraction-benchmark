@@ -2,8 +2,10 @@ const body = document.getElementById('results');
 const buttons = [...document.querySelectorAll('[data-column]')];
 const sizeButtons = [...document.querySelectorAll('[data-max-params]')];
 // Configs without identifier fields start with extraction F1.
-let activeColumn = [...body.rows].some(row => row.cells[1].dataset.value !== '') ? 1 : 4;
-let direction = activeColumn === 1 ? 'asc' : 'desc';
+const f1Column = Number(body.dataset.f1Column || 4);
+let activeColumn = Number(body.dataset.defaultColumn ||
+  ([...body.rows].some(row => row.cells[1].dataset.value !== '') ? 1 : f1Column));
+let direction = activeColumn === f1Column ? 'desc' : 'asc';
 
 function sortRows() {
   const sign = direction === 'asc' ? 1 : -1;

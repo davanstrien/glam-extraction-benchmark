@@ -4,7 +4,7 @@ function drawSizePlot(rows) {
   const points = rows.filter(row => !row.hidden && Number(row.dataset.params) > 0).map(row => ({
     name: row.cells[0].dataset.value,
     params: Number(row.dataset.params),
-    f1: Number(row.cells[4].dataset.value),
+    f1: Number(row.cells[Number(svg.dataset.f1Column || 4)].dataset.value),
     href: row.cells[0].querySelector('a')?.getAttribute('href'),
   }));
   const omitted = rows.filter(row => !row.hidden).length - points.length;

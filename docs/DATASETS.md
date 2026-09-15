@@ -193,6 +193,10 @@ uv run glam_bench/build_collection_space.py runs.json --output ./exports/space-b
 
 The first config is the landing page; others have their own directories, scores,
 examples and provenance. Each result must match its selected config and revision.
-The selector navigates between pages without mixing or averaging collection scores.
+The selector also offers **Overall**: the equal-weight mean of each dataset’s mean
+per-document F1 (currently 50% NLS and 50% Harvard). Models must have complete
+results on every selected config to enter Overall; others remain on their dataset
+pages. `overall-scores.json` records weights, component scores and source revisions.
+Individual dataset metrics are unchanged; the overall score is not a pooled field-level F1.
 Use only completed result files; retain interrupted checkpoints in the results bucket.
 Upload the resulting directory to the existing private Space as before.
