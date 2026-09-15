@@ -24,7 +24,7 @@ RUN_ID = "2026-09-15-nullable-v1"
 REVISION = "ecc9c02582f933ca89b73e6751e4ed76888cb24d"
 DATASET = "small-models-for-glam/glam-extraction-benchmark"
 IMAGE = "vllm/vllm-openai:v0.29.0"
-HARDWARE_USD_PER_HOUR = {"l40sx1": 1.80, "l4x1": 0.80, "a10g-small": 1.00}
+HARDWARE_USD_PER_HOUR = {"l40sx1": 1.80, "l4x1": 0.80, "a10g-small": 1.00, "a100-large": 2.50}
 MODELS = {
     "Qwen3.5-2B": ("Qwen/Qwen3.5-2B", "15852e8c16360a2fea060d615a32b45270f8a8fc", "2.274B"),
     "Qwen3.5-4B": ("Qwen/Qwen3.5-4B", "851bf6e806efd8d0a36b00ddf55e13ccb7b8cd0a", "4.660B"),
@@ -113,7 +113,7 @@ def worker(args):
     import result_io
 
     api = HfApi()
-    prefix = f"nls-index-cards/{args.run_id}"
+    prefix = f"{args.config}/{args.run_id}"
     outdir = root / "outputs"
     outdir.mkdir(exist_ok=True)
     receipt_path = outdir / f"{args.model}.launch.json"
@@ -160,6 +160,9 @@ def worker(args):
     }
     meta = {
         "run_id": args.run_id,
+        "dataset": args.dataset,
+        "config": args.config,
+        "dataset_revision": args.dataset_revision,
         "model": model_id,
         "model_revision": revision,
         "image": IMAGE,
@@ -182,7 +185,7 @@ def worker(args):
         wait_for_server(server)
         h.MAX_TOKENS = 1600
         ds_args = argparse.Namespace(
-            config="nls-index-cards", dataset=DATASET, dataset_revision=REVISION, limit=args.limit
+            config=args.config, dataset=args.dataset, dataset_revision=args.dataset_revision, limit=args.limit
         )
         items, block, _ = h.prepare_dataset(ds_args)
         spec["task_instructions"] = block["task_instructions"]
@@ -261,7 +264,7 @@ def launch(args):
             path = root / "glam_bench" / f"{name}.py"
             archive.add(path, arcname=str(path.relative_to(root)))
         archive.add(__file__, arcname="examples/inference/jobs_batch.py")
-    source = f"nls-index-cards/{args.run_id}/recipes/jobs-source.tar.gz"
+    source = f"{args.config}/{args.run_id}/recipes/jobs-source.tar.gz"
     if not args.reuse_source:
         api.batch_bucket_files(BUCKET, add=[(buffer.getvalue(), source)])
     bootstrap = (
@@ -287,8 +290,8 @@ def launch(args):
         namespace=NAMESPACE,
         flavor=args.flavor,
         timeout="60m",
-        name=f"glam-nls-{job_label.lower()}",
-        labels={"benchmark": "glam", "run": args.run_id, "model": job_label},
+        name=f"glam-{args.config}-{job_label.lower()}",
+        labels={"benchmark": "glam", "config": args.config, "run": args.run_id, "model": job_label},
         env={
             "MODEL_LABEL": args.model,
             "RUN_ID": args.run_id,
@@ -296,6 +299,9 @@ def launch(args):
             "PYTHONUNBUFFERED": "1",
             "GLAM_JOBS_NAMESPACE": NAMESPACE,
             "JOB_FLAVOR": args.flavor,
+            "BENCHMARK_CONFIG": args.config,
+            "BENCHMARK_DATASET": args.dataset,
+            "BENCHMARK_REVISION": args.dataset_revision,
         },
         secrets={"HF_TOKEN": get_token()},
     )
@@ -308,12 +314,15 @@ def launch(args):
         "hardware": args.flavor,
         "maximum_compute_usd": HARDWARE_USD_PER_HOUR[args.flavor],
         "run_id": args.run_id,
+        "dataset": args.dataset,
+        "config": args.config,
+        "dataset_revision": args.dataset_revision,
         "url": f"https://huggingface.co/jobs/{NAMESPACE}/{job.id}",
     }
     api.batch_bucket_files(
         BUCKET,
         add=[
-            (json.dumps(record, indent=2).encode(), f"nls-index-cards/{args.run_id}/{args.model}.launch.json")
+            (json.dumps(record, indent=2).encode(), f"{args.config}/{args.run_id}/{args.model}.launch.json")
         ],
     )
     print(json.dumps(record, indent=2))
@@ -324,6 +333,9 @@ def main():
     parser.add_argument("action", choices=["launch", "worker"])
     parser.add_argument("--model", required=True, choices=MODELS)
     parser.add_argument("--run-id", default=RUN_ID)
+    parser.add_argument("--config", default=os.environ.get("BENCHMARK_CONFIG", "nls-index-cards"))
+    parser.add_argument("--dataset", default=os.environ.get("BENCHMARK_DATASET", DATASET))
+    parser.add_argument("--dataset-revision", default=os.environ.get("BENCHMARK_REVISION", REVISION))
     parser.add_argument("--limit", type=int)
     parser.add_argument(
         "--reuse-source",

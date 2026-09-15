@@ -1,4 +1,4 @@
-# Optional NLS Jobs batch
+# Optional Jobs batch
 
 `jobs_batch.py` is an example prediction producer, separate from the benchmark
 harness. It starts a local vLLM server inside an HF Job, calls it, writes the
@@ -17,7 +17,7 @@ GLAM_JOBS_NAMESPACE=davanstrien uv run --with huggingface_hub==1.31.0 \
 
 Check the first three predictions, then launch other labels from `--help` with
 `--reuse-source` to use the existing runtime bundle. Hardware options are
-`l40sx1` ($1.80/hour), `l4x1` ($0.80/hour), and `a10g-small` ($1.00/hour),
+`l40sx1` ($1.80/hour), `l4x1` ($0.80/hour), `a10g-small` ($1.00/hour), and `a100-large` (80 GB, $2.50/hour),
 using prices checked on 2026-09-15. Each Job has a 60-minute timeout and exits
 when its model finishes. The September batch used L4 for 2B and L40S for the
 other five models, within a $15 allocation. Outputs stay in the organization bucket.
@@ -30,7 +30,25 @@ instructions; Granite receives its model-card KVP prompt; other models receive t
 reference VLM prompt. Per-row provenance records the prompt recipe and actual
 request options. These are prompt adapters, not changes to scoring.
 
-## Inputs and outputs
+## Another dataset config
+
+Pass the config, pinned dataset revision, and a separate run ID. For example,
+the 30 scored Harvard cards use:
+
+```bash
+GLAM_JOBS_NAMESPACE=davanstrien uv run --with huggingface_hub==1.31.0 \
+  examples/inference/jobs_batch.py launch --model Qwen3.5-2B --flavor l4x1 \
+  --config harvard-botany-headers \
+  --dataset-revision 48e92ea1112d3fc2a32467e875d64e10129c4d46 \
+  --run-id 2026-09-15-v1
+```
+
+The manifest selects the scored split; the five unscored review cards are excluded.
+Outputs and runtime source are stored under `<config>/<run-id>/`. Later models
+in that run can use `--reuse-source`. `--dataset` selects a different dataset repo
+if needed. NLS remains the default; adding a config does not rerun earlier inputs.
+
+## Default NLS inputs and outputs
 
 - Dataset: `small-models-for-glam/glam-extraction-benchmark`
 - Revision: `ecc9c02582f933ca89b73e6751e4ed76888cb24d`
@@ -63,8 +81,9 @@ predictions. Use another run ID for future reruns to retain earlier outputs.
 
 Ruff, compilation, CLI help, prompt checks against the pinned export, real GPU
 smoke runs, and per-card bucket checkpointing have been exercised. Completed
-submissions are validated against all 98 pinned IDs. See
-[September run results](jobs-2026-09-15.md) for outcomes and runtime evidence.
+submissions are validated against the 98 NLS or 30 Harvard pinned IDs. See
+[NLS run results](jobs-2026-09-15.md) and
+[Harvard run results](jobs-harvard-2026-09-15.md) for outcomes and runtime evidence.
 
 Model-specific sources:
 
