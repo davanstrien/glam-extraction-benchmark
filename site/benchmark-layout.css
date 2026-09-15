@@ -24,3 +24,4 @@ color:var(--muted);font-size:14px;white-space:nowrap;cursor:pointer}
 .plot-label{font-size:11px;fill:var(--ink);pointer-events:none}
 details{margin-top:24px}img{max-width:100%;max-height:440px}pre{white-space:pre-wrap;font-size:12px}
 
+.plot-label-line{stroke:#82908e;stroke-width:1;opacity:.65;pointer-events:none}

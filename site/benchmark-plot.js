@@ -48,8 +48,47 @@ function drawSizePlot(rows) {
     chart += `${opening}<title>${escapeText(description)}</title><circle class="plot-point${best ? ' frontier-point' : ''}" cx="${x}" cy="${y}" r="6"/>${p.href ? '</a>' : '</g>'}`;
     if (best) {
       const right = x < left + width * 0.65;
-      chart += `<text class="plot-label" x="${x+(right ? 10 : -10)}" y="${y-11}" text-anchor="${right ? 'start' : 'end'}">${escapeText(p.name)}</text>`;
+      chart += `<text class="plot-label" data-point-x="${x}" data-point-y="${y}" x="${x+(right ? 10 : -10)}" y="${y-11}" text-anchor="${right ? 'start' : 'end'}">${escapeText(p.name)}</text>`;
     }
   });
   svg.innerHTML = chart;
+  // Place labels using their rendered dimensions; crowded points keep their true coordinates.
+  const placed = [];
+  const intersects = (a, b, gap = 4) => a.x < b.x + b.width + gap
+    && a.x + a.width + gap > b.x && a.y < b.y + b.height + gap && a.y + a.height + gap > b.y;
+  const markers = points.map(p => ({x: X(p.params)-8, y: Y(p.f1)-8, width: 16, height: 16}));
+  svg.querySelectorAll('.plot-label').forEach(label => {
+    const x = Number(label.dataset.pointX), y = Number(label.dataset.pointY);
+    const preferredSide = x < left + width * 0.65 ? 1 : -1;
+    let chosen;
+    for (const dy of [-12, 26, -32, 46, -52, 66, -72, 86]) {
+      for (const side of [preferredSide, -preferredSide]) {
+        label.setAttribute('text-anchor', side === 1 ? 'start' : 'end');
+        label.setAttribute('x', x + side * 12);
+        label.setAttribute('y', y + dy);
+        const box = label.getBBox();
+        if (box.x < left + 2 || box.x + box.width > left + width - 2
+          || box.y < 5 || box.y + box.height > top + height - 4
+          || placed.some(other => intersects(box, other))
+          || markers.some(marker => intersects(box, marker, 2))) continue;
+        chosen = {x: box.x, y: box.y, width: box.width, height: box.height, dy};
+        break;
+      }
+      if (chosen) break;
+    }
+    if (!chosen) {
+      label.remove(); // Every point still has its accessible hover/focus label.
+      return;
+    }
+    placed.push(chosen);
+    if (chosen.dy !== -12) {
+      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('class', 'plot-label-line');
+      line.setAttribute('x1', x);
+      line.setAttribute('y1', y);
+      line.setAttribute('x2', Math.max(chosen.x, Math.min(x, chosen.x + chosen.width)));
+      line.setAttribute('y2', y < chosen.y ? chosen.y - 2 : chosen.y + chosen.height + 2);
+      svg.insertBefore(line, label);
+    }
+  });
 }
